@@ -18,43 +18,39 @@ var zone_links = [
   'privatelink.azurecr.io'
 ]
 
-var vnetId = resourceId(subscription().subscriptionId, vnetResourceGroupName, 'Microsoft.Network/virtualNetworks', vnetName)
+var vnetId = resourceId(vnetResourceGroupName, 'Microsoft.Network/virtualNetworks', vnetName)
 
-resource zones 'Microsoft.Network/privateDnsZones@2024-06-01' = [
-  for link in zone_links: {
-    name: link
-    location: 'global'
-    properties: {}
-  }
-]
+resource zones 'Microsoft.Network/privateDnsZones@2024-06-01' = [for link in zone_links: {
+  name: link
+  location: 'global'
+  properties: {}
+}]
 
-resource sao_zones 'Microsoft.Network/privateDnsZones/SOA@2024-06-01' = [
-  for link in zone_links: {
-    name: '${link}/@'
-    properties: {
-      ttl: 3600
-      soaRecord: {
-        email: soaEmail
-        serialNumber: 1
-        refreshTime: 3600
-        retryTime: 900
-        expireTime: 1209600
-        minimumTtl: 900
-      }
+resource soaZones 'Microsoft.Network/privateDnsZones/SOA@2024-06-01' = [for (link, i) in zone_links: {
+  parent: zones[i]
+  name: '@'
+  properties: {
+    ttl: 3600
+    soaRecord: {
+      email: soaEmail
+      serialNumber: 1
+      refreshTime: 3600
+      retryTime: 900
+      expireTime: 1209600
+      minimumTtl: 900
     }
   }
-]
+}]
 
-resource vnetlinks_zone 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = [
-  for link in zone_links: {
-    name: '${link}/pl-${uniqueString(link, vnetId)}'
-    location: 'global'
-    properties: {
-      virtualNetwork: {
-        id: vnetId
-      }
-      registrationEnabled: false
-      resolutionPolicy: 'NxDomainRedirect'
+resource vnetLinks 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = [for (link, i) in zone_links: {
+  parent: zones[i]
+  name: 'pl-${uniqueString(link, vnetId)}'
+  location: 'global'
+  properties: {
+    virtualNetwork: {
+      id: vnetId
     }
+    registrationEnabled: false
+    resolutionPolicy: 'NxDomainRedirect'
   }
-]
+}]
