@@ -64,7 +64,7 @@ resource vnet 'Microsoft.Network/VirtualNetworks@2023-11-01' existing = {
 
 resource snet 'Microsoft.Network/virtualNetworks/subnets@2025-05-01' existing = {
   parent: vnet
-  name: 'snet-psql-${environment}-${version}'
+  name: 'snet-${project_name}-${environment}-${version}'
 }
 
 resource pep 'Microsoft.Network/privateEndpoints@2025-05-01' = {
