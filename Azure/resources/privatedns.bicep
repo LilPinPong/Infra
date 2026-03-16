@@ -17,8 +17,7 @@ var zone_links = [
   'privatelink.azurecr.io'
 ]
 
-
-var vnetId = resourceId(subscription().id ,vnetResourceGroupName, 'Microsoft.Network/virtualNetworks', vnetName)
+var vnetId = resourceId(vnetResourceGroupName, 'Microsoft.Network/virtualNetworks', vnetName)
 
 resource zones 'Microsoft.Network/privateDnsZones@2024-06-01' = [
   for link in zone_links: {
@@ -47,7 +46,7 @@ resource sao_zones 'Microsoft.Network/privateDnsZones/SOA@2024-06-01' = [
 
 resource vnetlinks_zone 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = [
   for link in zone_links: {
-    name: '${link}/pl-${uniqueString(link, vnetId)}}'
+    name: '${link}/pl-${uniqueString(link, vnetId)}'
     location: 'global'
     properties: {
       virtualNetwork: {
