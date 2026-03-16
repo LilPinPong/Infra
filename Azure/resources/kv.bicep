@@ -16,12 +16,16 @@ param skuName string = 'standard'
 param objectId string
 
 @description('Permissions for secrets in the vault.')
-param secretsPermissions array = ['get', 'set', 'list']
+param secretsPermissions array = ['get', 'list', 'set','create', 'delete', 'backup','restore']
 
 @description('Permissions for keys in the vault.')
-param keysPermissions array = ['get','encrypt','list']
+param keysPermissions array = ['get','list', 'create', 'delete', 'backup','restore']
 
-resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
+resource kv_exist 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: 'kv-${project_name}-${environment}-${version}'
+}
+
+resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = if (empty(kv_exist.id)) {
   name: 'kv-${project_name}-${environment}-${version}'
   location: location
   properties: {
@@ -33,6 +37,13 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
     enableSoftDelete: false
     softDeleteRetentionInDays: 90
     enabledForTemplateDeployment: true
+    publicNetworkAccess:'Disabled'
+    networkAcls: {
+      bypass: 'AzureServices'
+      defaultAction: 'Deny'
+      ipRules: []
+      virtualNetworkRules: []
+    }
     accessPolicies: [
       {
         objectId: objectId
@@ -45,3 +56,35 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
     ]
   }
 }   
+
+
+resource vnet 'Microsoft.Network/VirtualNetworks@2023-11-01' existing = {
+  name: 'vnet-${resourceGroup().location}-${environment}-${version}'
+  scope: resourceGroup('rg-network-${environment}-${version}')
+}
+
+resource snet 'Microsoft.Network/virtualNetworks/subnets@2025-05-01' existing = {
+  parent: vnet
+  name: 'snet-psql-${environment}-${version}'
+}
+
+resource pep 'Microsoft.Network/privateEndpoints@2025-05-01' = {
+  name: 'pep-kv-${project_name}-${environment}-${version}'
+  location: location
+  properties: {
+    subnet: {
+      id: snet.id
+    }
+    privateLinkServiceConnections: [
+      {
+        name: 'kv-privatelink-${project_name}-${environment}-${version}'
+        properties: {
+          privateLinkServiceId: kv.id
+          groupIds: ['vault']
+          requestMessage: 'Please approve the private endpoint connection for Key Vault.'
+        }
+      }
+    ]
+    customNetworkInterfaceName: 'nic-pep-kv-${project_name}-${environment}-${version}'
+  }
+}

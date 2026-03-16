@@ -31,17 +31,22 @@ jobs:
             - name: Lint Bicep
               run: |
                   az bicep lint --file Azure/resources/rg.bicep
+                  az bicep lint --file Azure/resources/nw.bicep
+                  az bicep lint --file Azure/resources/vnet.bicep
+                  az bicep lint --file Azure/resources/kv.bicep
 
             - name: Bicep Build
               run: |
                   mkdir -p ./Azure/resources/compiled
                   az bicep build --file Azure/resources/rg.bicep --outdir ./Azure/resources/compiled
+                  az bicep build --file Azure/resources/nw.bicep --outdir ./Azure/resources/compiled
+                  az bicep build --file Azure/resources/vnet.bicep --outdir ./Azure/resources/compiled
                   az bicep build --file Azure/resources/kv.bicep --outdir ./Azure/resources/compiled
 
             - name: Upload artifact
               uses: actions/upload-artifact@v4
               with:
-                  name: rg-artifact-${{ env.PROJECT_NAME }}
+                  name: artifact-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}
                   path: ./Azure/
 
     create_rg:
@@ -59,18 +64,17 @@ jobs:
 
             - name: Deploy Resource Group
               run: |
-                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='common'
-                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='network'
-                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='privatedns'
-                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='database'
-                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name=${{ env.PROJECT_NAME }}
+                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='common' --what-if
+                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='network' --what-if
+                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='privatedns' --what-if
+                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='database' --what-if
+                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name=${{ env.PROJECT_NAME }} --what-if
 
             - name: Logout of Azure
               run: |
                   az logout
-                  
-
-    create_kv:
+    
+    create_resources:
         needs: create_rg
         environment: test
         runs-on: ubuntu-latest
@@ -83,14 +87,19 @@ jobs:
               with:
                   creds: ${{ env.AZURE_CREDENTIALS }}
 
-            - name: Deploy Key Vault
+            - name: Deploy Resources
               run: |
+                  az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vnet.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} --what-if
+                  az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nw.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} --what-if
+                  az deployment group create --resource-group rg-privatedns-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/privatedns.bicep --parameters environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} --what-if
                   az deployment group create --resource-group rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/kv.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} objectId=$(az ad signed-in-user show --query objectId -o tsv) --what-if
 
             - name: Logout of Azure
               run: |
-                  az logout
+                  az logout              
 
+    
+        
     checkov_Scan:
         needs: create_artifact
         environment: test
@@ -99,7 +108,7 @@ jobs:
             - name: Download artifact
               uses: actions/download-artifact@v4
               with:
-                  name: rg-artifact-${{ env.PROJECT_NAME }}
+                  name: artifact-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}
                   path: ./Azure/
 
             - name: Checkov Scan (Bicep source)
