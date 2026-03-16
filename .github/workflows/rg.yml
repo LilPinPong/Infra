@@ -6,9 +6,11 @@ on:
       - main
     paths:
       - Azure/**
+      - .github/workflows/rg.yml
   pull_request:
     paths:
       - Azure/**
+      - .github/workflows/rg.yml
   workflow_dispatch:
 
 env:
@@ -34,6 +36,12 @@ jobs:
       - name: Lint Bicep
         run: |
           az bicep lint --file Azure/resources/rg.bicep
+
+      - name: Checkov Scan (Bicep source)
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: ./Azure/resources
+          framework: bicep
 
       - name: Bicep Build
         run: |
@@ -72,4 +80,4 @@ jobs:
         uses: bridgecrewio/checkov-action@v12
         with:
           directory: ./Azure/resources/compiled
-          framework: bicep
+          framework: arm
