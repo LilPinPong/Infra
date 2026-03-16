@@ -16,7 +16,7 @@ param skuName string = 'standard'
 param objectId string
 
 @description('Permissions for secrets in the vault.')
-param secretsPermissions array = ['get', 'list', 'set','create', 'delete', 'backup','restore']
+param secretsPermissions array = ['get', 'list', 'set', 'delete', 'backup', 'restore']
 
 @description('Permissions for keys in the vault.')
 param keysPermissions array = ['get','list', 'create', 'delete', 'backup','restore']
