@@ -21,11 +21,9 @@ param secretsPermissions array = ['get', 'list', 'set','create', 'delete', 'back
 @description('Permissions for keys in the vault.')
 param keysPermissions array = ['get','list', 'create', 'delete', 'backup','restore']
 
-resource kv_exist 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
-  name: 'kv-${project_name}-${environment}-${version}'
-}
+param createKv bool = true
 
-resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = if (empty(kv_exist.id)) {
+resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = if (createKv) {
   name: 'kv-${project_name}-${environment}-${version}'
   location: location
   properties: {
