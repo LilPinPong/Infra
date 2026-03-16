@@ -3,7 +3,7 @@ param version string
 
 var vnetResourceGroupName string = 'rg-network-${environment}-${version}'
 var vnetName string = 'vnet-${resourceGroup().location}-${environment}-${version}'
-var soaEmail string = 'signal.gaby@gmail.com'
+var soaEmail string = 'LangisGabyhotmail.onmicrosoft.com'
 
 var zone_links = [
   'privatelink.file.${az.environment().suffixes.storage}'
@@ -11,6 +11,7 @@ var zone_links = [
   'privatelink.table.${az.environment().suffixes.storage}'
   'privatelink.database.${az.environment().suffixes.storage}'
   'privatelink.mysql.database.azure.com'
+  'privatelink.mariadb.database.azure.com'
   'privatelink.postgres.database.azure.com'
   'privatelink.vaultcore.azure.net'
   'privatelink.azurewebsites.net'
