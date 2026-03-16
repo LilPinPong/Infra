@@ -58,6 +58,8 @@ jobs:
 
             - name: Deploy Resource Group
               run: |
+                  mkdir -p ./Azure/resources/compiled
+                  az bicep build --file Azure/resources/rg.bicep --outdir ./Azure/resources/compiled
                   az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/compiled/rg.json --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='common'
                   az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/compiled/rg.json --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='network'
                   az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/compiled/rg.json --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='privatedns'
