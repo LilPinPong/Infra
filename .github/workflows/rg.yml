@@ -68,6 +68,7 @@ jobs:
 
   create_artifact:
     needs: create_rg
+    environment: test
     runs-on: ubuntu-latest
     steps:
       - name: Download artifact
