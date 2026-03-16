@@ -38,7 +38,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-11-01' = {
       ]
     }
     encryption: {
-      enabled: true
+      enabled: false
     }
     subnets: [
       for subnet in subnets: {
