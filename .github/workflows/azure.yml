@@ -87,12 +87,25 @@ jobs:
               with:
                   creds: ${{ env.AZURE_CREDENTIALS }}
 
+            - name: Check if Key Vault exists
+              id: check_kv
+              shell: bash
+              run: |
+                KV_NAME="kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                RG_NAME="rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+
+                if az keyvault show --name "$KV_NAME" --resource-group "$RG_NAME" >/dev/null 2>&1; then
+                    echo "create_kv=false" >> "$GITHUB_OUTPUT"
+                else
+                    echo "create_kv=true" >> "$GITHUB_OUTPUT"
+                fi
+                
             - name: Deploy Resources
               run: |
                   az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vnet.bicep --parameters environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} --what-if
                   az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nw.bicep --what-if
                   az deployment group create --resource-group rg-privatedns-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/privatedns.bicep --parameters environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} --what-if
-                  az deployment group create --resource-group rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/kv.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} objectId=$(az ad signed-in-user show --query objectId -o tsv) --what-if
+                  az deployment group create --resource-group rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/kv.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} objectId=$(az ad signed-in-user show --query objectId -o tsv) createKv=${{ steps.check_kv.outputs.create_kv }} --what-if
 
             - name: Logout of Azure
               run: |

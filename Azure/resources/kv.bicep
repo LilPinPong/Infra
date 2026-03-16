@@ -31,11 +31,12 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = if (createKv) {
       family: 'A'
       name: skuName
     }
+    publicNetworkAccess:'Disabled'
     tenantId: subscription().tenantId
-    enableSoftDelete: false
+    enableSoftDelete: true
+    enablePurgeProtection: true
     softDeleteRetentionInDays: 90
     enabledForTemplateDeployment: true
-    publicNetworkAccess:'Disabled'
     networkAcls: {
       bypass: 'AzureServices'
       defaultAction: 'Deny'
