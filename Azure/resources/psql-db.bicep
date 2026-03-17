@@ -8,7 +8,6 @@ param environment string
 param version string
 param serverEdition string = 'Burstable' 
 param instanceType string = 'Standard_B2s'
-param availableZone string = '2'
 param psql_version string = '15'
 
 
@@ -44,6 +43,5 @@ resource psql 'Microsoft.DBforPostgreSQL/flexibleServers@2025-08-01' = {
       backupRetentionDays: 7
       geoRedundantBackup: 'Disabled'
     }
-    availabilityZone: availableZone
   }
 }
