@@ -74,6 +74,7 @@ jobs:
               run: |
                   az logout
     
+                  
     create_resources:
         needs: create_rg
         environment: test
