@@ -1,6 +1,7 @@
 @allowed(['test','dev','qa','prod'])
 param environment string
 param version string
+param project_name string
 
 @description('network address IPv4 (format 1.2.3.4) range for the vnet')
 param vnet_address_range string = '172.18.0.0'
@@ -8,7 +9,7 @@ param vnet_address_range string = '172.18.0.0'
 @maxValue(30)
 param vnet_address_range_suffix int = 16
 var snet_psql string = 'snet-psql-${environment}-${version}'
-var snet_name string = 'snet-${environment}-${version}'
+var snet_name string = 'snet-${project_name}-${environment}-${version}'
 
 var vnet_name = 'vnet-${resourceGroup().location}-${environment}-${version}'
 var vnet_address_space = '${vnet_address_range}/${vnet_address_range_suffix}'
@@ -38,7 +39,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-11-01' = {
       ]
     }
     encryption: {
-      enabled: false
+      enabled: true
     }
     subnets: [
       for subnet in subnets: {

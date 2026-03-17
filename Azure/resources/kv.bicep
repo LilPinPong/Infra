@@ -40,8 +40,6 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = if (createKv) {
     networkAcls: {
       bypass: 'AzureServices'
       defaultAction: 'Deny'
-      ipRules: []
-      virtualNetworkRules: []
     }
     accessPolicies: [
       {
@@ -70,6 +68,7 @@ resource snet 'Microsoft.Network/virtualNetworks/subnets@2025-05-01' existing = 
 resource pep 'Microsoft.Network/privateEndpoints@2025-05-01' = {
   name: 'pep-kv-${project_name}-${environment}-${version}'
   location: location
+  tags: {}
   properties: {
     subnet: {
       id: snet.id
