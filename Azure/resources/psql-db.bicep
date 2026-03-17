@@ -1,7 +1,7 @@
-param adminUsername string
+param adminUsername string = 'psqladmin'
 
 @secure()
-param adminPassword string
+param adminPassword string 
 param location string = resourceGroup().location 
 param project_name string
 param environment string 
@@ -46,5 +46,4 @@ resource psql 'Microsoft.DBforPostgreSQL/flexibleServers@2025-08-01' = {
     }
     availabilityZone: availableZone
   }
-
 }
