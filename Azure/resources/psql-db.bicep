@@ -2,7 +2,7 @@ param adminUsername string = 'psqladmin'
 
 @secure()
 param adminPassword string 
-param location string = resourceGroup().location 
+param location string = 'canadacentral'
 param project_name string
 param environment string 
 param version string
