@@ -21,61 +21,61 @@ env:
     LOCATION: ${{vars.LOCATION}}
 
 jobs:
-    create_artifact:
-        runs-on: ubuntu-latest
-        environment: test
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+    # create_artifact:
+    #     runs-on: ubuntu-latest
+    #     environment: test
+    #     steps:
+    #         - name: Checkout
+    #           uses: actions/checkout@v4
 
-            - name: Lint Bicep
-              run: |
-                  az bicep lint --file Azure/resources/rg.bicep
-                  az bicep lint --file Azure/resources/nw.bicep
-                  az bicep lint --file Azure/resources/vnet.bicep
-                  az bicep lint --file Azure/resources/kv.bicep
+    #         - name: Lint Bicep
+    #           run: |
+    #               az bicep lint --file Azure/resources/rg.bicep
+    #               az bicep lint --file Azure/resources/nw.bicep
+    #               az bicep lint --file Azure/resources/vnet.bicep
+    #               az bicep lint --file Azure/resources/kv.bicep
 
-            - name: Bicep Build
-              run: |
-                  mkdir -p ./Azure/resources/compiled
-                  az bicep build --file Azure/resources/rg.bicep --outdir ./Azure/resources/compiled
-                  az bicep build --file Azure/resources/nw.bicep --outdir ./Azure/resources/compiled
-                  az bicep build --file Azure/resources/vnet.bicep --outdir ./Azure/resources/compiled
-                  az bicep build --file Azure/resources/kv.bicep --outdir ./Azure/resources/compiled
+    #         - name: Bicep Build
+    #           run: |
+    #               mkdir -p ./Azure/resources/compiled
+    #               az bicep build --file Azure/resources/rg.bicep --outdir ./Azure/resources/compiled
+    #               az bicep build --file Azure/resources/nw.bicep --outdir ./Azure/resources/compiled
+    #               az bicep build --file Azure/resources/vnet.bicep --outdir ./Azure/resources/compiled
+    #               az bicep build --file Azure/resources/kv.bicep --outdir ./Azure/resources/compiled
 
-            - name: Upload artifact
-              uses: actions/upload-artifact@v4
-              with:
-                  name: artifact-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}
-                  path: ./Azure/
+    #         - name: Upload artifact
+    #           uses: actions/upload-artifact@v4
+    #           with:
+    #               name: artifact-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}
+    #               path: ./Azure/
 
-    create_rg:
-        needs: create_artifact
-        environment: test
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+    # create_rg:
+    #     needs: create_artifact
+    #     environment: test
+    #     runs-on: ubuntu-latest
+    #     steps:
+    #         - name: Checkout
+    #           uses: actions/checkout@v4
 
-            - name: Login to Azure
-              uses: azure/login@v2
-              with:
-                  creds: ${{ env.AZURE_CREDENTIALS }}
+    #         - name: Login to Azure
+    #           uses: azure/login@v2
+    #           with:
+    #               creds: ${{ env.AZURE_CREDENTIALS }}
 
-            - name: Deploy Resource Group
-              run: |
-                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='common' location=${{ env.LOCATION }}
-                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='network' location=${{ env.LOCATION }}
-                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='privatedns' location=${{ env.LOCATION }}
-                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='database' location=${{ env.LOCATION }}
-                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name=${{ env.PROJECT_NAME }} location=${{ env.LOCATION }} --what-if
+    #         - name: Deploy Resource Group
+    #           run: |
+    #               az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='common' location=${{ env.LOCATION }}
+    #               az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='network' location=${{ env.LOCATION }}
+    #               az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='privatedns' location=${{ env.LOCATION }}
+    #               az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='database' location=${{ env.LOCATION }}
+    #               az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name=${{ env.PROJECT_NAME }} location=${{ env.LOCATION }} --what-if
 
-            - name: Logout of Azure
-              run: |
-                  az logout
+    #         - name: Logout of Azure
+    #           run: |
+    #               az logout
     
     create_resources:
-        needs: create_rg
+#        needs: create_rg
         environment: test
         runs-on: ubuntu-latest
         steps:
@@ -102,12 +102,12 @@ jobs:
                 
             - name: Deploy Resources
               run: |
-                az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nw.bicep     
-                az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vnet.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
-                az deployment group create --resource-group rg-privatedns-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/privatedns.bicep --parameters environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-                az deployment group create --resource-group rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/kv.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} objectId=${{ secrets.AZURE_GITHUB_OBJECT_ID }} createKv=${{ steps.check_kv.outputs.create_kv }} 
                 az deployment group create --resource-group rg-database-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/psql-db.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} adminPassword=${{ secrets.AZURE_DB_PASSWORD }} 
                 
+                # az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nw.bicep     
+                # az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vnet.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
+                # az deployment group create --resource-group rg-privatedns-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/privatedns.bicep --parameters environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+                # az deployment group create --resource-group rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/kv.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} objectId=${{ secrets.AZURE_GITHUB_OBJECT_ID }} createKv=${{ steps.check_kv.outputs.create_kv }} 
             - name: Logout of Azure 
               run: |
                   az logout              
