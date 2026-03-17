@@ -8,7 +8,7 @@ param environment string
 param version string
 param serverEdition string = 'Burstable' 
 param instanceType string = 'Standard_B2s'
-param availableZone string = '3'
+param availableZone string = '2'
 param psql_version string = '15'
 
 
