@@ -64,11 +64,11 @@ jobs:
 
             - name: Deploy Resource Group
               run: |
-                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='common'
-                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='network' 
-                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='privatedns' 
-                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='database'
-                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name=${{ env.PROJECT_NAME }} --what-if
+                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='common' location=${{ env.LOCATION }}
+                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='network' location=${{ env.LOCATION }}
+                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='privatedns' location=${{ env.LOCATION }}
+                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name='database' location=${{ env.LOCATION }}
+                  az deployment sub create --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters env=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} name=${{ env.PROJECT_NAME }} location=${{ env.LOCATION }} --what-if
 
             - name: Logout of Azure
               run: |
