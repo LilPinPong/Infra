@@ -1,5 +1,4 @@
 name: Azure Base Infrastructure Deployment
-
 on:
     push:
         branches:
@@ -7,10 +6,12 @@ on:
         paths:
             - Azure/**
             - .github/workflows/azure-infra.yml
+            - .github/workflows/azure-project.yml
     pull_request:
         paths:
             - Azure/**
             - .github/workflows/azure-infra.yml
+            - .github/workflows/azure-project.yml
     workflow_dispatch:
 
 env:
