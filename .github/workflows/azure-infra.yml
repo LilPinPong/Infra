@@ -1,5 +1,4 @@
 name: Azure Base Infrastructure Deployment
-
 on:
     push:
         branches:
