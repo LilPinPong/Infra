@@ -29,8 +29,8 @@ jobs:
 
             - name: ssh-keygen
               run: |
-                  ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ''
                   az keyvault recover soft-delete --vault-name kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} 
+                  ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ''
                   does_kv_secret_exist=$(az keyvault secret show --vault-name kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name ssh-key -o tsv)
                   if [ -z "$does_kv_secret_exist" ]; then
                     az keyvault secret set --vault-name kv-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name ssh-key --value "$(cat ~/.ssh/id_rsa.pub)"
