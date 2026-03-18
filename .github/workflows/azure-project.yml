@@ -29,7 +29,7 @@ jobs:
 
             - name: ssh-keygen
               run: |
-                  az keyvault recover --vault-name kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} 
+                  az keyvault recover --name kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} 
                   ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ''
                   does_kv_secret_exist=$(az keyvault secret show --vault-name kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name ssh-key -o tsv)
                   if [ -z "$does_kv_secret_exist" ]; then
