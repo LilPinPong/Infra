@@ -29,7 +29,7 @@ jobs:
 
             - name: ssh-keygen
               run: |
-                  az role assignment create --assignee-object-id ${{ secrets.AZURE_GITHUB_OBJECT_ID }} --role "Key Vault Secrets Officer" --scope "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}/providers/Microsoft.KeyVault/vaults/kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                  az role assignment create --assignee-object-id ${{ secrets.AZURE_GITHUB_OBJECT_ID }} --role "Key Vault Secrets Officer" --scope "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}/providers/Microsoft.KeyVault/vaults/kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
                   ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ''
                   does_kv_secret_exist=$(az keyvault secret show --vault-name kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name ssh-key -o tsv)
                   if [ -z "$does_kv_secret_exist" ]; then
