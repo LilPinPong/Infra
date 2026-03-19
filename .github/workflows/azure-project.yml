@@ -6,13 +6,13 @@ on:
             - main
         paths:
             - Azure/**
-            - .github/workflows/azure-infra.yml
             - .github/workflows/azure-project.yml
+            - .github/workflows/azure-infra.yml
     pull_request:
         paths:
             - Azure/**
-            - .github/workflows/azure-infra.yml
             - .github/workflows/azure-project.yml
+            - .github/workflows/azure-infra.yml
 #     workflow_dispatch:
     # workflow_run:
     #     workflows: ["Azure Base Infrastructure Deployment"]
