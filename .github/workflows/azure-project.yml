@@ -33,7 +33,7 @@ jobs:
                     echo "Keys exists"
                 else
                     echo "Creating Key pairs"
-                    az keyvault key create --vault-name kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name ssh-key --kty RSA --size 4096 --protection software
+                    az keyvault key create --vault-name kv-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name ssh-key --kty RSA --size 4096 --protection software
                 fi
             - name: Deploy base project resources
               run: |
