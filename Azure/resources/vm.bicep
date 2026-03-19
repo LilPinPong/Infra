@@ -5,16 +5,7 @@ param version string
 param adminUsername string = 'azureuser'
 @secure()
 param adminPassword string
-
-
-resource kv 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
-  name: 'kv-${project_name}-${environment}-${version}'
-}
-
-resource pubkey 'Microsoft.KeyVault/vaults/keys@2025-05-01' existing = {
-  parent: kv
-  name: 'ssh-public-key'
-}
+param adminPublicKey string
 
 resource vm 'Microsoft.Compute/virtualMachines@2024-11-01' = {
   name: 'vm-${project_name}-${environment}-${version}'
@@ -60,7 +51,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-11-01' = {
           publicKeys: [
             {
               path: '/home/${adminUsername}/.ssh/authorized_keys'
-              keyData: pubkey.properties.kty
+              keyData: adminPublicKey
             }
           ]
         }
