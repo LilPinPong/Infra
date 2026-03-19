@@ -29,7 +29,7 @@ jobs:
 
             - name: ssh-keygen
               run: |
-                az keyvault purge --name kv-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }} --location ${{ env.LOCATION }} --yes
+                az keyvault purge --name kv-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }} --location ${{ env.LOCATION }} 
                 if az keyvault secret show --vault-name kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name ssh-key > /dev/null 2>&1; then
                     echo "Keys exists"
                 else
