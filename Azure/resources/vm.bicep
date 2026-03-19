@@ -6,6 +6,16 @@ param adminUsername string = 'azureuser'
 @secure()
 param adminPassword string
 
+
+resource kv 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: 'kv-${project_name}-${environment}-${version}'
+}
+
+resource pubkey 'Microsoft.KeyVault/vaults/keys@2025-05-01' existing = {
+  parent: kv
+  name: 'ssh-public-key'
+}
+
 resource vm 'Microsoft.Compute/virtualMachines@2024-11-01' = {
   name: 'vm-${project_name}-${environment}-${version}'
   location: resourceGroup().location
@@ -35,8 +45,8 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-11-01' = {
         managedDisk: {
           storageAccountType: 'Standard_LRS'
         }
-        dataDisk:[]
-        diskController: 'SCSI'
+    //    dataDisk:[]
+    //    diskController: 'SCSI'
       }
     }
     osProfile: {
@@ -50,7 +60,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-11-01' = {
           publicKeys: [
             {
               path: '/home/${adminUsername}/.ssh/authorized_keys'
-              keyData: '<your-ssh-public-key>'
+              keyData: pubkey.properties.kty
             }
           ]
         }

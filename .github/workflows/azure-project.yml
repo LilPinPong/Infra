@@ -29,17 +29,19 @@ jobs:
 
             - name: ssh-keygen
               run: |
-                  az role assignment create --assignee-object-id '6c0c9c6b-dd45-485c-b6fa-98f8b266b56a' --assignee-principal-type ServicePrincipal --role "Key Vault Secrets Officer" --scope "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}/providers/Microsoft.KeyVault/vaults/kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
-                  ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ''
-                  does_kv_secret_exist=$(az keyvault secret show --vault-name kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name ssh-key -o tsv)
-                  if [ -z "$does_kv_secret_exist" ]; then
-                    az keyvault secret set --vault-name kv-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name ssh-key --value "$(cat ~/.ssh/id_rsa.pub)"
-                    az keyvault secret set --vault-name kv-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name ssh-key-private --value "$(cat ~/.ssh/id_rsa)"
-                  fi
+                if az keyvault secret show --vault-name kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name ssh-key > /dev/null 2>&1; then
+                    echo "Secret exists"
+                else
+                    echo "Creating secret"
+                    az keyvault secret set --vault-name kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name ssh-key --value "$(cat ~/.ssh/id_rsa.pub)"
+                    az keyvault secret set --vault-name kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name ssh-key-private --value "$(cat ~/.ssh/id_rsa)"
+                fi
             - name: Deploy base project resources
               run: |
                   az deployment sub create --name 'rg-${{env.PROJECT_NAME}}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
                   az deployment group create --resource-group rg-database-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/psql-db.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} adminPassword=${{ secrets.AZURE_DB_PASSWORD }}  
+                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nic.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
+                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nsg.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
                   az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vm.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
                   az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/stvm.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
 
