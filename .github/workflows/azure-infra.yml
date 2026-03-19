@@ -6,12 +6,12 @@ on:
         paths:
             - Azure/**
             - .github/workflows/azure-infra.yml
-   #         - .github/workflows/azure-project.yml
+            - .github/workflows/azure-project.yml
     pull_request:
         paths:
             - Azure/**
             - .github/workflows/azure-infra.yml
-    #        - .github/workflows/azure-project.yml
+            - .github/workflows/azure-project.yml
     workflow_dispatch:
 
 env:
