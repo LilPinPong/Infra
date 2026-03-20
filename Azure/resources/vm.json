@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "8954809879309669694"
+      "templateHash": "18229184811194861534"
     }
   },
   "parameters": {
@@ -21,12 +21,6 @@
     "adminUsername": {
       "type": "string",
       "defaultValue": "azureuser"
-    },
-    "adminPassword": {
-      "type": "securestring"
-    },
-    "adminPublicKey": {
-      "type": "string"
     }
   },
   "resources": [
@@ -67,15 +61,14 @@
         "osProfile": {
           "computerName": "[format('vm-{0}-{1}-{2}', parameters('project_name'), parameters('environment'), parameters('version'))]",
           "adminUsername": "[parameters('adminUsername')]",
-          "adminPassword": "[parameters('adminPassword')]",
           "linuxConfiguration": {
-            "disablePasswordAuthentication": false,
+            "disablePasswordAuthentication": true,
             "provisionVMAgent": true,
             "ssh": {
               "publicKeys": [
                 {
                   "path": "[format('/home/{0}/.ssh/authorized_keys', parameters('adminUsername'))]",
-                  "keyData": "[parameters('adminPublicKey')]"
+                  "keyData": "[reference(resourceId('Microsoft.Compute/sshPublicKeys', format('ssh-{0}-{1}-{2}', parameters('project_name'), parameters('environment'), parameters('version'))), '2025-04-01').publicKey]"
                 }
               ]
             }
