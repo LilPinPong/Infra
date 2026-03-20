@@ -6,7 +6,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-11-01' existing = {
   name: 'vnet-${resourceGroup().location}-${environment}-${version}'
 }
 
-resource snet_psql 'Microsoft.Network/virtualNetworks/subnets@2023-11-01' existing = {
+resource snet 'Microsoft.Network/virtualNetworks/subnets@2023-11-01' existing = {
   parent: vnet
   name: 'snet-${project_name}-${environment}-${version}'
 }
@@ -65,7 +65,7 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2023-11-01' = {
           protocol: 'Tcp'
           access: 'Allow'
           direction: 'Outbound'
-          sourceAddressPrefix: snet_psql.properties.addressPrefix
+          sourceAddressPrefix: snet.properties.addressPrefix
           sourcePortRange: '*'
           destinationAddressPrefix: '*'
           destinationPortRange: '445'
