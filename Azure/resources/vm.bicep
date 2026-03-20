@@ -69,7 +69,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-11-01' = {
     networkProfile: {
       networkInterfaces: [
         {
-          id: resourceId('rg-network-${environment}-${version}', 'Microsoft.Network/networkInterfaces', 'nic-${project_name}-${environment}-${version}')
+          id: resourceId('rg-${project_name}-${environment}-${version}', 'Microsoft.Network/networkInterfaces', 'nic-${project_name}-${environment}-${version}')
           properties: {
             deleteOption: 'Delete'
           }
