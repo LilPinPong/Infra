@@ -5,7 +5,7 @@ param assignBlobRole bool = false
 
 var vnet_rg string = 'rg-network-${environment}-${version}'
 var vnet_name string = 'vnet-${resourceGroup().location}-${environment}-${version}'
-var snet_name string = 'snet-psql-${environment}-${version}'
+var snet_name string = 'snet-${project_name}-${environment}-${version}'
 
 
 resource stvm 'Microsoft.Storage/storageAccounts@2025-06-01' = {
