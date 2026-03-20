@@ -4,6 +4,7 @@ param version string
 
 resource vnet 'Microsoft.Network/virtualNetworks@2023-11-01' existing = {
   name: 'vnet-${resourceGroup().location}-${environment}-${version}'
+  scope: resourceGroup('rg-network-${environment}-${version}')
 }
 
 resource snet 'Microsoft.Network/virtualNetworks/subnets@2023-11-01' existing = {
