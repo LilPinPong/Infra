@@ -40,33 +40,36 @@ jobs:
               with:
                   creds: ${{ env.AZURE_CREDENTIALS }} 
 
-            - name: Deploy base project resources
-              run: |
-                  az deployment sub create --name 'rg-${{env.PROJECT_NAME}}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
-                  RG_NAME="rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
-                  SSH_KEY_NAME="ssh-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
-                  SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-                  SSH_KEY_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RG_NAME}/providers/Microsoft.Compute/sshPublicKeys/${SSH_KEY_NAME}"
+            # - name: Deploy base project resources
+            #   run: |
+            #       az deployment sub create --name 'rg-${{env.PROJECT_NAME}}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
+            #       RG_NAME="rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+            #       SSH_KEY_NAME="ssh-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+            #       SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+            #       SSH_KEY_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RG_NAME}/providers/Microsoft.Compute/sshPublicKeys/${SSH_KEY_NAME}"
 
-                  if az sshkey show --resource-group "$RG_NAME" --name "$SSH_KEY_NAME" > /dev/null 2>&1; then
-                      echo "Azure SSH key resource already exists"
-                  else
-                      echo "Creating Azure SSH key resource"
-                      az sshkey create --resource-group "$RG_NAME" --name "$SSH_KEY_NAME" --location "${{ env.LOCATION }}" --only-show-errors > /dev/null
-                  fi
+            #       if az sshkey show --resource-group "$RG_NAME" --name "$SSH_KEY_NAME" > /dev/null 2>&1; then
+            #           echo "Azure SSH key resource already exists"
+            #       else
+            #           echo "Creating Azure SSH key resource"
+            #           az sshkey create --resource-group "$RG_NAME" --name "$SSH_KEY_NAME" --location "${{ env.LOCATION }}" --only-show-errors > /dev/null
+            #       fi
 
-                  SSH_PUBLIC_KEY=$(az sshkey show --resource-group "$RG_NAME" --name "$SSH_KEY_NAME" --query publicKey -o tsv)
-                  if [ -z "$SSH_PUBLIC_KEY" ]; then
-                      echo "Generating SSH key pair in Azure"
-                      az rest --method post --uri "${SSH_KEY_ID}/generateKeyPair?api-version=2025-04-01" --body "{\"encryptionType\":\"RSA\"}" --only-show-errors > /dev/null
-                  fi
-                  az deployment group create --resource-group rg-database-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/psql-db.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} adminPassword=${{ secrets.AZURE_DB_PASSWORD }} 
-                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nsg.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
-                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/pip.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nic.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vm.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/stvm.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+            #       SSH_PUBLIC_KEY=$(az sshkey show --resource-group "$RG_NAME" --name "$SSH_KEY_NAME" --query publicKey -o tsv)
+            #       if [ -z "$SSH_PUBLIC_KEY" ]; then
+            #           echo "Generating SSH key pair in Azure"
+            #           az rest --method post --uri "${SSH_KEY_ID}/generateKeyPair?api-version=2025-04-01" --body "{\"encryptionType\":\"RSA\"}" --only-show-errors > /dev/null
+            #       fi
+            #       az deployment group create --resource-group rg-database-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/psql-db.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} adminPassword=${{ secrets.AZURE_DB_PASSWORD }} 
+            #       az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nsg.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
+            #       az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/pip.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+            #       az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nic.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+            #       az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vm.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+            #       az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/stvm.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
                   
+            - name: Run Command inline script on VM
+              run: |
+                  az vm run-command invoke --command-id RunShellScript --name vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --scripts "echo Hello, World! > /home/azureuser/hello.txt"
             
             - name : Logout of Azure
               run: |
