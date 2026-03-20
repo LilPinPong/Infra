@@ -18,7 +18,7 @@ resource nic 'Microsoft.Network/networkInterfaces@2023-11-01' = {
             }
           }
           subnet: {
-            id: resourceId('rg-network-${environment}-${version}', 'Microsoft.Network/virtualNetworks/subnets', 'vnet-${resourceGroup().location}-${environment}-${version}', 'snet-psql-${environment}-${version}')
+            id: resourceId('rg-network-${environment}-${version}', 'Microsoft.Network/virtualNetworks/subnets', 'vnet-${resourceGroup().location}-${environment}-${version}', 'snet-${project_name}-${environment}-${version}')
           }
           primary: true
           privateIPAddressVersion: 'IPv4'

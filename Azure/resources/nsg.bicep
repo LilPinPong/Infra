@@ -8,7 +8,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-11-01' existing = {
 
 resource snet_psql 'Microsoft.Network/virtualNetworks/subnets@2023-11-01' existing = {
   parent: vnet
-  name: 'snet-psql-${environment}-${version}'
+  name: 'snet-${project_name}-${environment}-${version}'
 }
 
 resource nsg 'Microsoft.Network/networkSecurityGroups@2023-11-01' = {
