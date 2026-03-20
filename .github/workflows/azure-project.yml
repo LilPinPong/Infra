@@ -60,17 +60,14 @@ jobs:
                       echo "Generating SSH key pair in Azure"
                       az rest --method post --uri "${SSH_KEY_ID}/generateKeyPair?api-version=2025-04-01" --body "{\"encryptionType\":\"RSA\"}" --only-show-errors > /dev/null
                   fi
+                  az deployment group create --resource-group rg-database-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/psql-db.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} adminPassword=${{ secrets.AZURE_DB_PASSWORD }} 
+                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nsg.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
+                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/pip.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nic.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vm.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
                   az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/stvm.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-#                  az deployment group create --resource-group rg-database-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/psql-db.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} adminPassword=${{ secrets.AZURE_DB_PASSWORD }} --what-if
-#                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nsg.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} --what-if
-#                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/pip.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} --what-if
-#                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nic.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} --what-if
-#                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vm.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} --what-if
+                  
             
-            
-            - name: Deploy application resources
-              run: |
-                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/app.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}      
             - name : Logout of Azure
               run: |
                   az logout
