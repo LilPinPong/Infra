@@ -51,13 +51,13 @@ resource ra 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (assignBlo
 }
 
 resource pep 'Microsoft.Network/privateEndpoints@2025-05-01' = {
-  name: 'pep-${project_name}-${environment}-${version}'
+  name: 'stvm-pep-${project_name}-${environment}-${version}'
   location: resourceGroup().location
   properties: {
     subnet: {
       id: resourceId(vnet_rg, 'Microsoft.Network/virtualNetworks/subnets', vnet_name, snet_name)
     }
-    customNetworkInterfaceName: 'nic-pep-${project_name}-${environment}-${version}'
+    customNetworkInterfaceName: 'stvm-nic-${project_name}-${environment}-${version}'
     privateLinkServiceConnections: [
       {
         name: 'file'
