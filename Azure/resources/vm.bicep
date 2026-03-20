@@ -17,7 +17,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-11-01' = {
   }
   properties: {
     hardwareProfile: {
-      vmSize: 'Standard_B2s'
+      vmSize: 'Standard_B2ats_v2'
     }
     additionalCapabilities: {
       hibernationEnabled: false
