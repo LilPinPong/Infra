@@ -66,7 +66,7 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2023-11-01' = {
           protocol: 'Tcp'
           access: 'Allow'
           direction: 'Outbound'
-          sourceAddressPrefix: snet.properties.addressPrefix
+          sourceAddressPrefix: snet.properties.addressPrefixes[0]
           sourcePortRange: '*'
           destinationAddressPrefix: '*'
           destinationPortRange: '445'
@@ -76,3 +76,5 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2023-11-01' = {
     ]
   }
 }
+
+output snet string = snet.properties.addressPrefixes[0]
