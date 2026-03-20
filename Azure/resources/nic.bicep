@@ -13,8 +13,6 @@ resource snet 'Microsoft.Network/virtualNetworks/subnets@2025-05-01' existing = 
   name: 'snet-${project_name}-${environment}-${version}'
 }
 
-
-
 resource nic 'Microsoft.Network/networkInterfaces@2023-11-01' = {
   name: 'nic-${project_name}-${environment}-${version}'
   location: resourceGroup().location
