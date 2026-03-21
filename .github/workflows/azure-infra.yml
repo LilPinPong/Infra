@@ -65,10 +65,10 @@ jobs:
 
             - name: Deploy Resource Group
               run: |
-                  az deployment sub create --name 'rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --what-if
-                  az deployment sub create --name 'rg-privatedns-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --what-if
-                  az deployment sub create --name 'rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --what-if
-                  az deployment sub create --name 'rg-database-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --what-if
+                  az deployment sub create --name 'rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
+                  az deployment sub create --name 'rg-privatedns-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
+                  az deployment sub create --name 'rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
+                  az deployment sub create --name 'rg-database-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
 
             - name: Logout of Azure
               run: |
@@ -102,10 +102,10 @@ jobs:
                 
             - name: Deploy Resources
               run: |
-                az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nw.bicep --what-if    
-                az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vnet.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} --what-if
-                az deployment group create --resource-group rg-privatedns-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/privatedns.bicep --parameters environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} --what-if
-                az deployment group create --resource-group rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/kv.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} objectId=${{ secrets.AZURE_GITHUB_OBJECT_ID }} createKv=${{ steps.check_kv.outputs.create_kv }} --what-if
+                az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nw.bicep    
+                az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vnet.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+                az deployment group create --resource-group rg-privatedns-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/privatedns.bicep --parameters environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+                az deployment group create --resource-group rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/kv.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} objectId=${{ secrets.AZURE_GITHUB_OBJECT_ID }} createKv=${{ steps.check_kv.outputs.create_kv }} 
              
            
             - name: Logout of Azure 
