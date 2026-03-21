@@ -35,8 +35,6 @@ machine_commands=(
                            EOF"
     ["mount stvm"]=""
 
-    ["build env file"]=""
-
     ["compose n8n"]="docker compose up -d"
 
 )

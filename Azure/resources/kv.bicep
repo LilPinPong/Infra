@@ -24,7 +24,7 @@ param keysPermissions array = ['get','list', 'create', 'delete', 'backup','resto
 param createKv bool = true
 
 resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = if (createKv) {
-  name: 'kv-${environment}-${version}'
+  name: 'kv-temp-${environment}-${version}'
   location: location
   properties: {
     sku: {
