@@ -24,7 +24,7 @@ param keysPermissions array = ['get','list', 'create', 'delete', 'backup','resto
 param createKv bool = true
 
 resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = if (createKv) {
-  name: 'kv-temp-${environment}-${version}'
+  name: 'kv-${environment}-${version}'
   location: location
   properties: {
     sku: {
@@ -37,6 +37,7 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = if (createKv) {
     enablePurgeProtection: true
     softDeleteRetentionInDays: 90
     enabledForTemplateDeployment: true
+    enableRbacAuthorization: true
     networkAcls: {
       bypass: 'AzureServices'
       defaultAction: 'Deny'
@@ -66,7 +67,7 @@ resource snet 'Microsoft.Network/virtualNetworks/subnets@2025-05-01' existing = 
 }
 
 resource pep 'Microsoft.Network/privateEndpoints@2025-05-01' = {
-  name: 'pep-kv-${project_name}-${environment}-${version}'
+  name: 'pep-kv-${environment}-${version}'
   location: location
   tags: {}
   properties: {
@@ -75,7 +76,7 @@ resource pep 'Microsoft.Network/privateEndpoints@2025-05-01' = {
     }
     privateLinkServiceConnections: [
       {
-        name: 'kv-privatelink-${project_name}-${environment}-${version}'
+        name: 'kv-privatelink-${environment}-${version}'
         properties: {
           privateLinkServiceId: kv.id
           groupIds: ['vault']
@@ -83,6 +84,6 @@ resource pep 'Microsoft.Network/privateEndpoints@2025-05-01' = {
         }
       }
     ]
-    customNetworkInterfaceName: 'nic-pep-kv-${project_name}-${environment}-${version}'
+    customNetworkInterfaceName: 'nic-pep-kv-${environment}-${version}'
   }
 }
