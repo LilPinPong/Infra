@@ -98,7 +98,7 @@ jobs:
                   
             - name: Run Command inline script on VM
               run: |
-                  az vm run-command invoke --command-id RunShellScript --name vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --scripts "cp ./conf $HOME/ && cd $HOME/conf && sudo chmod +x n8n.sh && ./n8n.sh"
+                  az vm run-command invoke --command-id RunShellScript --name vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --scripts "cp ./conf /home/azureuser/ && cd /home/azureuser/conf && sudo chmod +x n8n.sh && ./n8n.sh"
             
             - name : Logout of Azure
               run: |
