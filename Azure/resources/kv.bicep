@@ -23,6 +23,8 @@ param keysPermissions array = ['get','list', 'create', 'delete', 'backup','resto
 
 param createKv bool = true
 
+var privateDnsResourceGroupName = 'rg-privatedns-${environment}-${version}'
+
 resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = if (createKv) {
   name: 'kv-${project_name}-${environment}-${version}'
   location: location
@@ -66,7 +68,7 @@ resource snet 'Microsoft.Network/virtualNetworks/subnets@2025-05-01' existing = 
   name: 'snet-${project_name}-${environment}-${version}'
 }
 
-resource pep 'Microsoft.Network/privateEndpoints@2025-05-01' = {
+resource pep 'Microsoft.Network/privateEndpoints@2025-05-01' = if (createKv) {
   name: 'pep-kv-${project_name}-${environment}-${version}'
   location: location
   tags: {}
@@ -85,5 +87,25 @@ resource pep 'Microsoft.Network/privateEndpoints@2025-05-01' = {
       }
     ]
     customNetworkInterfaceName: 'nic-pep-kv-${environment}-${version}'
+  }
+}
+
+resource kvPrivateDnsZone 'Microsoft.Network/privateDnsZones@2024-06-01' existing = if (createKv) {
+  name: 'privatelink.vaultcore.azure.net'
+  scope: resourceGroup(privateDnsResourceGroupName)
+}
+
+resource kvPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2025-05-01' = if (createKv) {
+  name: 'default'
+  parent: pep
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'vaultcore'
+        properties: {
+          privateDnsZoneId: kvPrivateDnsZone.id
+        }
+      }
+    ]
   }
 }

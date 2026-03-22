@@ -28,7 +28,9 @@ env:
 jobs:
     deploy_project:
 
-        runs-on: ubuntu-latest
+        runs-on:
+            - self-hosted
+            - linux
         environment: test
         steps:
             - name: Checkout
@@ -41,15 +43,53 @@ jobs:
 
             - name: Deploy base project resources
               run: |
-                  if az keyvault key show --vault-name kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name SshKey --query "key.n" --output file --file pub.pem >/dev/null 2>&1; then
-                      echo "Azure SSH key resource already exists"
-                  else
-                      echo "Creating Azure SSH key resource"
-        
-                      az keyvault key create --vault-name kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name SshKey --kty RSA --size 4096 --protection software
+                  set -euo pipefail
+
+                  RG_NAME="rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                  KV_NAME="kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                  SSH_KEY_NAME="ssh-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                  KEY_DIR="$RUNNER_TEMP/ssh"
+                  PRIVATE_KEY_PATH="$KEY_DIR/$SSH_KEY_NAME"
+                  PUBLIC_KEY_PATH="${PRIVATE_KEY_PATH}.pub"
+
+                  mkdir -p "$KEY_DIR"
+
+                  az deployment sub create --name "$RG_NAME" --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep
+
+                  set +e
+                  KV_CONNECTIVITY_OUTPUT="$(az keyvault secret list --vault-name "$KV_NAME" --maxresults 1 2>&1)"
+                  KV_CONNECTIVITY_EXIT_CODE=$?
+                  set -e
+
+                  if [ "$KV_CONNECTIVITY_EXIT_CODE" -ne 0 ]; then
+                      if echo "$KV_CONNECTIVITY_OUTPUT" | grep -q "ForbiddenByConnection"; then
+                          echo "::error::Key Vault '$KV_NAME' is private-only and this runner has no approved network path. Use a self-hosted runner joined to your Azure VNet with Private DNS resolution."
+                      else
+                          echo "::error::Cannot access Key Vault '$KV_NAME'. Check data-plane permissions for this identity and verify private DNS/network routing."
+                          echo "$KV_CONNECTIVITY_OUTPUT"
+                      fi
+                      exit 1
                   fi
 
-                  az deployment sub create --name 'rg-${{env.PROJECT_NAME}}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
+                  if az keyvault secret show --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-private" >/dev/null 2>&1 && az keyvault secret show --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-public" >/dev/null 2>&1; then
+                      echo "Using existing SSH key pair from Key Vault secrets"
+                      az keyvault secret download --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-private" --file "$PRIVATE_KEY_PATH" >/dev/null
+                      az keyvault secret download --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-public" --file "$PUBLIC_KEY_PATH" >/dev/null
+                      chmod 600 "$PRIVATE_KEY_PATH"
+                  else
+                      echo "Creating SSH key pair and storing it in Key Vault secrets"
+                      ssh-keygen -t rsa -b 4096 -m PEM -f "$PRIVATE_KEY_PATH" -N "" -C "$SSH_KEY_NAME"
+                      az keyvault secret set --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-private" --file "$PRIVATE_KEY_PATH" >/dev/null
+                      az keyvault secret set --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-public" --file "$PUBLIC_KEY_PATH" >/dev/null
+                  fi
+
+                  if az sshkey show --resource-group "$RG_NAME" --name "$SSH_KEY_NAME" >/dev/null 2>&1; then
+                      echo "Azure SSH public key resource already exists"
+                  else
+                      echo "Creating Azure SSH public key resource"
+                      az sshkey create --resource-group "$RG_NAME" --name "$SSH_KEY_NAME" --location ${{ env.LOCATION }} --public-key "@${PUBLIC_KEY_PATH}" >/dev/null
+                  fi
+
                   az deployment group create --resource-group rg-database-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/psql-db.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} adminPassword=${{ secrets.AZURE_DB_PASSWORD }} 
                   az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nsg.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
                   az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/pip.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
