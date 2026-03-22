@@ -29,8 +29,7 @@ jobs:
     deploy_project:
 
         runs-on:
-            - self-hosted
-            - linux
+            - ubuntu-latest
         environment: test
         steps:
             - name: Checkout
