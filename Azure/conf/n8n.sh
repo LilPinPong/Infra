@@ -1,92 +1,90 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-LOG_FILE="<Path of the logs files>"
-# Ensure log file exists
+LOG_FILE="${LOG_FILE:-/var/log/n8n-bootstrap.log}"
+mkdir -p "$(dirname "$LOG_FILE")"
 touch "$LOG_FILE"
 
-    log() {
-        local level="$1"
-        local message="$2"
-        echo "$(date '+%Y-%m-%d %H:%M:%S') [$level] $message" | tee -a "$LOG_FILE"
-    }
-
-log "INFO" "🔄 Machines is currently updating..." | tee -a "$LOG_FILE"
-
-declare -A machine_commands
-machine_commands=(
-    
-     ["Update Machine"]="sudo apt install \
-                         sudo apt update \
-                         sudo apt upgrade -y"
-
-     ["Docker installer"]="sudo apt update \
-                           sudo apt install ca-certificates curl \
-                           sudo install -m 0755 -d /etc/apt/keyrings \
-                           sudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
-                           sudo chmod a+r /etc/apt/keyrings/docker.asc \
-
-                           sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
-                            Types: deb
-                            URIs: https://download.docker.com/linux/debian
-                            Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
-                            Components: stable
-                            Signed-By: /etc/apt/keyrings/docker.asc
-                           EOF"
-    ["mount stvm"]=""
-    ["copy caddyfile"]=""
-    ["compose n8n"]="docker compose up -d"
-
-)
-
-update_machine() {
-    local image_name="$1"
-    local start_command="$2"
-
-    log "INFO" "🔍 Searching for:🐳 $image_name"
-
-    # Extract container name from the start command
-    local container_name=$(echo "$start_command" | awk '{for(i=1;i<=NF;i++) if ($i == "--name") print $(i+1)}')
-    
-    if [ -z "$container_name" ]; then
-        log "ERROR" "❌ No container name found in the start command."
-        return 1
-    fi
-
-    local container_id=$(docker ps -a --filter "name=$container_name" --format "{{.ID}}")
-
-    if [ -n "$container_id" ]; then
-        log "INFO" "🛑 Stopping current container: $container_name"
-        if docker stop "$container_name" &>> "$LOG_FILE"; then
-            log "INFO" "✅ Successfully stopped $container_name"
-        else
-            log "ERROR" "❌ Failed to stop $container_name"
-        fi
-
-        log "INFO" "🗑  Removing container: $container_name"
-        if docker rm "$container_name" &>> "$LOG_FILE"; then
-            log "INFO" "✅ Successfully removed $container_name"
-        else
-            log "ERROR" "❌ Failed to remove $container_name"
-        fi
-    else
-        log "WARN" "⚠️ No running container found for: $container_name"
-    fi
-
-    log "INFO" "🚀 Starting updated container: $container_name"
-    if eval "$start_command" &>> "$LOG_FILE"; then
-        log "INFO" "✅ Successfully started container: $container_name"
-    else
-        log "ERROR" "❌ Failed to start container: $container_name"
-    fi
+log() {
+  local level="$1"
+  local message="$2"
+  echo "$(date '+%Y-%m-%d %H:%M:%S') [$level] $message" | tee -a "$LOG_FILE"
 }
 
+run_step() {
+  local step_name="$1"
+  shift
+  log "INFO" "Starting: $step_name"
+  if "$@" >>"$LOG_FILE" 2>&1; then
+    log "INFO" "Completed: $step_name"
+  else
+    log "ERROR" "Failed: $step_name"
+    return 1
+  fi
+}
 
-declare -a startup_order=(
-    "All the image in the order you need to be restarted"
-)
+install_docker() {
+  if command -v docker >/dev/null 2>&1; then
+    log "INFO" "Docker is already installed"
+    return 0
+  fi
 
-for image in "${startup_order[@]}"; do
-    update_machine "$image" "${images[$image]}"
-done
+  run_step "Install apt prerequisites" sudo apt-get install -y ca-certificates curl
+  run_step "Create keyring directory" sudo install -m 0755 -d /etc/apt/keyrings
+  run_step "Download Docker GPG key" sudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+  run_step "Set GPG key permissions" sudo chmod a+r /etc/apt/keyrings/docker.asc
 
-log "INFO" "✅ Deployment update done. 🎉🎉🎉!" | tee -a "$LOG_FILE"
+  local codename
+  codename="$(. /etc/os-release && echo "$VERSION_CODENAME")"
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian ${codename} stable" \
+    | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+
+  run_step "Refresh apt index for Docker repo" sudo apt-get update -y
+  run_step "Install Docker engine and compose plugin" sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+}
+
+find_compose_dir() {
+  local candidates=(
+    "${COMPOSE_DIR:-}"
+    "$PWD"
+    "$PWD/conf"
+    "/home/azureuser/conf"
+  )
+
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    [ -z "$candidate" ] && continue
+    if [ -f "$candidate/docker-compose.yml" ] || [ -f "$candidate/compose.yml" ] || [ -f "$candidate/compose.yaml" ]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+start_n8n_stack() {
+  local compose_dir
+  compose_dir="$(find_compose_dir)" || {
+    log "ERROR" "🛑 No compose file found. Set COMPOSE_DIR or place compose file in /home/azureuser/conf."
+    return 1
+  }
+
+  run_step "🔍 Start n8n stack from $compose_dir 🐳" bash -lc "cd '$compose_dir' && sudo docker compose up -d"
+}
+
+main() {
+  if [ -n "${1:-}" ]; then
+    COMPOSE_DIR="$1"
+  fi
+
+  log "✅ INFO" "Machine update and n8n deployment started"
+  run_step "🔍 Update apt index" sudo apt-get update -y
+  run_step "✅ Upgrade installed packages" sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
+  install_docker
+  run_step "🐳 Enable and start Docker service" sudo systemctl enable --now docker
+  start_n8n_stack
+  log "✅ INFO" "Deployment update completed"
+}
+
+main "$@"
