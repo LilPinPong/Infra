@@ -41,7 +41,7 @@ jobs:
                   else
                       echo "Creating Azure SSH key resource"
                       
-                      az keyvault key create --vault-name kv-temp-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name SigningKey --kty RSA --size 2048 --protection software
+                      az keyvault key create --vault-name kv-temp-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name SshKey --kty RSA --size 4096 --protection software
                       az sshkey create --resource-group "$RG_NAME" --name "$SSH_KEY_NAME" --location "${{ env.LOCATION }}" --only-show-errors > /dev/null
                   fi
 
