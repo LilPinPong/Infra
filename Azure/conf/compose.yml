@@ -1,0 +1,46 @@
+services: 
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    depends_on:
+      - n8n
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./conf:/etc/caddy/
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - n8n_network
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD}
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_EDITOR_BASE_URL=http://localhost:5678
+      - N8N_VERSION_MANIFEST_URL=https://api.n8n.io/versions.json
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - n8n_network
+
+volumes:
+  caddy_data:
+  caddy_config:
+  n8n_data:
+
+networks:
+  n8n_network:
+    driver: bridge
