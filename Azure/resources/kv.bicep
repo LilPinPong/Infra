@@ -24,7 +24,7 @@ param keysPermissions array = ['get','list', 'create', 'delete', 'backup','resto
 param createKv bool = true
 
 resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = if (createKv) {
-  name: 'kv-${environment}-${version}'
+  name: 'kv-${project_name}-${environment}-${version}'
   location: location
   properties: {
     sku: {
@@ -67,7 +67,7 @@ resource snet 'Microsoft.Network/virtualNetworks/subnets@2025-05-01' existing = 
 }
 
 resource pep 'Microsoft.Network/privateEndpoints@2025-05-01' = {
-  name: 'pep-kv-${environment}-${version}'
+  name: 'pep-kv-${project_name}-${environment}-${version}'
   location: location
   tags: {}
   properties: {
@@ -76,7 +76,7 @@ resource pep 'Microsoft.Network/privateEndpoints@2025-05-01' = {
     }
     privateLinkServiceConnections: [
       {
-        name: 'kv-privatelink-${environment}-${version}'
+        name: 'kv-privatelink-${project_name}-${environment}-${version}'
         properties: {
           privateLinkServiceId: kv.id
           groupIds: ['vault']
