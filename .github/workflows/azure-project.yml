@@ -132,21 +132,8 @@ jobs:
                   --command-id RunShellScript \
                   --name "$VM_NAME" \
                   --resource-group "$VM_RG" \
-                  --scripts "set -euo pipefail
-                    REMOTE_DIR='$REMOTE_DIR'
-                    sudo mkdir -p \"\$REMOTE_DIR\"
-                    cat <<'COMPOSE_B64_EOF' | base64 -d | sudo tee \"\$REMOTE_DIR/compose.yml\" >/dev/null
-                    $COMPOSE_B64
-                    COMPOSE_B64_EOF
-                    cat <<'ENV_B64_EOF' | base64 -d | sudo tee \"\$REMOTE_DIR/.env\" >/dev/null
-                        $ENV_B64
-                    ENV_B64_EOF
-                    sudo chown -R azureuser:azureuser \"\$REMOTE_DIR\"
-                    sudo chmod 644 \"\$REMOTE_DIR/compose.yml\"
-                    sudo chmod 640 \"\$REMOTE_DIR/.env\"
-                    ls -la \"\$REMOTE_DIR\"
-                    wc -c \"\$REMOTE_DIR/compose.yml\" \"\$REMOTE_DIR/.env\"
-                  "
+                  --scripts @"$GITHUB_WORKSPACE/Azure/conf/copy-compose-to-vm.sh" \
+                  --parameters "$REMOTE_DIR" "$COMPOSE_B64" "$ENV_B64"
 
             - name: Run n8n bootstrap on VM
               run: |
