@@ -136,11 +136,11 @@ jobs:
                     REMOTE_DIR='$REMOTE_DIR'
                     sudo mkdir -p \"\$REMOTE_DIR\"
                     cat <<'COMPOSE_B64_EOF' | base64 -d | sudo tee \"\$REMOTE_DIR/compose.yml\" >/dev/null
-$COMPOSE_B64
-COMPOSE_B64_EOF
+                    $COMPOSE_B64
+                    COMPOSE_B64_EOF
                     cat <<'ENV_B64_EOF' | base64 -d | sudo tee \"\$REMOTE_DIR/.env\" >/dev/null
-$ENV_B64
-ENV_B64_EOF
+                        $ENV_B64
+                    ENV_B64_EOF
                     sudo chown -R azureuser:azureuser \"\$REMOTE_DIR\"
                     sudo chmod 644 \"\$REMOTE_DIR/compose.yml\"
                     sudo chmod 640 \"\$REMOTE_DIR/.env\"
