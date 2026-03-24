@@ -1,14 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ "$#" -lt 3 ]; then
-  echo "Usage: $0 <remote_dir> <compose_b64> <env_b64>" >&2
+REMOTE_DIR=""
+COMPOSE_B64=""
+ENV_B64=""
+
+for arg in "$@"; do
+  case "$arg" in
+    remote_dir=*)
+      REMOTE_DIR="${arg#*=}"
+      ;;
+    compose_b64=*)
+      COMPOSE_B64="${arg#*=}"
+      ;;
+    env_b64=*)
+      ENV_B64="${arg#*=}"
+      ;;
+    *)
+      ;;
+  esac
+done
+
+if [ -z "$REMOTE_DIR" ] || [ -z "$COMPOSE_B64" ] || [ -z "$ENV_B64" ]; then
+  echo "Usage: $0 remote_dir=<path> compose_b64=<base64> env_b64=<base64>" >&2
   exit 1
 fi
-
-REMOTE_DIR="$1"
-COMPOSE_B64="$2"
-ENV_B64="$3"
 
 sudo mkdir -p "$REMOTE_DIR"
 printf '%s' "$COMPOSE_B64" | base64 -d | sudo tee "$REMOTE_DIR/compose.yml" >/dev/null

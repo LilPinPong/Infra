@@ -133,7 +133,7 @@ jobs:
                   --name "$VM_NAME" \
                   --resource-group "$VM_RG" \
                   --scripts @"$GITHUB_WORKSPACE/Azure/conf/copy-compose-to-vm.sh" \
-                  --parameters "$REMOTE_DIR" "$COMPOSE_B64" "$ENV_B64" \
+                  --parameters "remote_dir=$REMOTE_DIR" "compose_b64=$COMPOSE_B64" "env_b64=$ENV_B64" \
                   --query "value[0].message" \
                   --output tsv | tee "$RUNNER_TEMP/copy-compose.log"
 
