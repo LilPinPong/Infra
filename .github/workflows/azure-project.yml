@@ -96,32 +96,50 @@ jobs:
             #       az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vm.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
             #       az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/stvm.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
 
-            - name: Copy compose + .env to VM
+            - name: Copy compose.yml and .env to VM
               run: |
                 set -euo pipefail
+
+                VM_NAME="vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                VM_RG="rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                REMOTE_DIR="/home/azureuser/n8n"
+
                 COMPOSE_B64="$(base64 -w0 "$GITHUB_WORKSPACE/Azure/conf/compose.yml")"
-                ENV_B64="$(base64 -w0 "$GITHUB_WORKSPACE/Azure/conf/.env")"
-                az vm run-command invoke --resource-group rg-azureinfra-dev-01 --name vm-azureinfra-dev-01 --command-id RunShellScript --scripts "set -euo pipefail 
-                    sudo mkdir -p /home/azureuser/conf
-                    echo "$1" | base64 -d | sudo tee /home/azureuser/conf/compose.yml >/dev/null
-                    echo "$2" | base64 -d | sudo tee /home/azureuser/conf/.env >/dev/null
-                    sudo chown -R azureuser:azureuser /home/azureuser/conf
-                    sudo chmod 600 /home/azureuser/conf/.env"
-                --parameters "$COMPOSE_B64" "$ENV_B64"
-            - name: Run Command inline script on VM
+
+                cat >"$RUNNER_TEMP/n8n.env" <<EOF
+                TZ=UTC-4
+                POSTGRES_DATABASE=PSQL_N8N
+                POSTGRES_PORT=5432
+                POSTGRES_HOST=psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}.postgres.database.azure.com
+                POSTGRES_USER=psqladmin@psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}
+                POSTGRES_PASSWORD=${{ secrets.AZURE_DB_PASSWORD }}
+                EOF
+                ENV_B64="$(base64 -w0 "$RUNNER_TEMP/n8n.env")"
+
+                az vm run-command invoke \
+                  --command-id RunShellScript \
+                  --name "$VM_NAME" \
+                  --resource-group "$VM_RG" \
+                  --scripts 'set -euo pipefail
+                    sudo mkdir -p "$1"
+                    echo "$2" | base64 -d | sudo tee "$1/compose.yml" >/dev/null
+                    echo "$3" | base64 -d | sudo tee "$1/.env" >/dev/null
+                    sudo chown -R azureuser:azureuser "$1"
+                    sudo chmod 644 "$1/compose.yml"
+                    sudo chmod 600 "$1/.env"
+                    ls -la "$1"
+                  ' \
+                  --parameters "$REMOTE_DIR" "$COMPOSE_B64" "$ENV_B64"
+
+            - name: Run n8n bootstrap on VM
               run: |
-                  az vm run-command invoke --command-id RunShellScript --name vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --scripts "mkdir -p /home/azureuser/n8n && chown azureuser:azureuser /home/azureuser/n8n"
-                  az vm run-command invoke --command-id RunShellScript --name vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --scripts "cat >/home/azureuser/n8n/.env <<EOF
-                    TZ="UTC-4"
-                    POSTGRES_DATABASE="PSQL_N8N"
-                    POSTGRES_PORT="5432"
-                    POSTGRES_HOST="psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}.postgres.database.azure.com"
-                    POSTGRES_USER="psqladmin@psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
-                    POSTGRES_PASSWORD=${{ secrets.AZURE_DB_PASSWORD }}
-                  EOF"
-                  az vm run-command invoke --command-id RunShellScript --name vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --scripts @"cp $GITHUB_WORKSPACE/Azure/conf/compose.yml /home/azureuser/n8n/compose.yml"
-                  az vm run-command invoke --command-id RunShellScript --name vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --scripts "chmod 600 /home/azureuser/n8n/.env"
-                  az vm run-command invoke --command-id RunShellScript --name vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --scripts @"$GITHUB_WORKSPACE/Azure/conf/n8n.sh"
+                set -euo pipefail
+                az vm run-command invoke \
+                  --command-id RunShellScript \
+                  --name "vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}" \
+                  --resource-group "rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}" \
+                  --scripts @"$GITHUB_WORKSPACE/Azure/conf/n8n.sh" \
+                  --parameters /home/azureuser/n8n
             
             - name : Logout of Azure
               run: |
