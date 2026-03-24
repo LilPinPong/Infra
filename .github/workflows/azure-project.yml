@@ -97,6 +97,8 @@ jobs:
             #       az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/stvm.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
 
             - name: Copy compose.yml and .env to VM
+              env:
+                AZURE_DB_PASSWORD: ${{ secrets.AZURE_DB_PASSWORD }}
               run: |
                 set -euo pipefail
 
@@ -106,14 +108,15 @@ jobs:
 
                 COMPOSE_B64="$(base64 -w0 "$GITHUB_WORKSPACE/Azure/conf/compose.yml")"
 
-                cat >"$RUNNER_TEMP/n8n.env" <<EOF
-                TZ=UTC-4
-                POSTGRES_DATABASE=PSQL_N8N
-                POSTGRES_PORT=5432
-                POSTGRES_HOST=psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}.postgres.database.azure.com
-                POSTGRES_USER=psqladmin@psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}
-                POSTGRES_PASSWORD=${{ secrets.AZURE_DB_PASSWORD }}
-                EOF
+                {
+                  echo "TZ=UTC-4"
+                  echo "POSTGRES_DATABASE=PSQL_N8N"
+                  echo "POSTGRES_PORT=5432"
+                  echo "POSTGRES_HOST=psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}.postgres.database.azure.com"
+                  echo "POSTGRES_USER=psqladmin@psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                  echo "POSTGRES_SCHEMA=public"
+                  printf 'POSTGRES_PASSWORD=%s\n' "$AZURE_DB_PASSWORD"
+                } >"$RUNNER_TEMP/n8n.env"
                 ENV_B64="$(base64 -w0 "$RUNNER_TEMP/n8n.env")"
 
                 az vm run-command invoke \

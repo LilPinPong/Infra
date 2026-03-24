@@ -43,6 +43,24 @@ install_docker() {
   run_step "🐳 Install Docker engine and compose plugin" sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 }
 
+ensure_azureuser_docker_group() {
+  if ! id -u azureuser >/dev/null 2>&1; then
+    log "ERROR" "🛑 User azureuser does not exist on this VM."
+    return 1
+  fi
+
+  if ! getent group docker >/dev/null 2>&1; then
+    run_step "👥 Create docker group" sudo groupadd docker
+  fi
+
+  if id -nG azureuser | tr ' ' '\n' | grep -qx docker; then
+    log "INFO" "👥 azureuser is already in docker group"
+  else
+    run_step "👥 Add azureuser to docker group" sudo usermod -aG docker azureuser
+    log "INFO" "✅ azureuser added to docker group"
+  fi
+}
+
 find_compose_dir() {
   local candidates=(
     "${COMPOSE_DIR:-}"
@@ -65,12 +83,52 @@ find_compose_dir() {
 
 start_n8n_stack() {
   local compose_dir
+  local compose_file
+  local compose_output
+
   compose_dir="$(find_compose_dir)" || {
     log "ERROR" "🛑 No compose file found. Set COMPOSE_DIR or place compose file in /home/azureuser/conf."
     return 1
   }
 
-  run_step "🚀 Start n8n stack from $compose_dir 🐳" bash -lc "cd '$compose_dir' && sudo docker compose up -d"
+  if [ -f "$compose_dir/compose.yml" ]; then
+    compose_file="$compose_dir/compose.yml"
+  elif [ -f "$compose_dir/compose.yaml" ]; then
+    compose_file="$compose_dir/compose.yaml"
+  elif [ -f "$compose_dir/docker-compose.yml" ]; then
+    compose_file="$compose_dir/docker-compose.yml"
+  else
+    log "ERROR" "🛑 Compose file not found in $compose_dir."
+    return 1
+  fi
+
+  log "INFO" "🔍 Using compose file: $compose_file"
+  compose_output="$(mktemp)"
+
+  if sudo -u azureuser bash -lc "cd '$compose_dir' && docker compose -f '$compose_file' --env-file '$compose_dir/.env' config" >"$compose_output" 2>&1; then
+    log "INFO" "✅ Compose configuration is valid"
+  else
+    log "ERROR" "🛑 Compose validation failed"
+    while IFS= read -r line; do
+      log "ERROR" "🧾 $line"
+    done <"$compose_output"
+    rm -f "$compose_output"
+    return 1
+  fi
+
+  if sudo -u azureuser bash -lc "cd '$compose_dir' && docker compose -f '$compose_file' --env-file '$compose_dir/.env' up -d" >"$compose_output" 2>&1; then
+    log "INFO" "✅ n8n stack started successfully"
+  else
+    log "ERROR" "🛑 Failed to start n8n stack"
+    while IFS= read -r line; do
+      log "ERROR" "🧾 $line"
+    done <"$compose_output"
+    rm -f "$compose_output"
+    return 1
+  fi
+
+  cat "$compose_output" >>"$LOG_FILE"
+  rm -f "$compose_output"
 }
 
 main() {
@@ -83,6 +141,7 @@ main() {
   run_step "⬆️ Upgrade installed packages" sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
   install_docker
   run_step "🐳 Enable and start Docker service" sudo systemctl enable --now docker
+  ensure_azureuser_docker_group
   start_n8n_stack
   log "INFO" "🎉 Deployment update completed"
 }
