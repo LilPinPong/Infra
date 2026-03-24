@@ -119,20 +119,34 @@ jobs:
                 } >"$RUNNER_TEMP/n8n.env"
                 ENV_B64="$(base64 -w0 "$RUNNER_TEMP/n8n.env")"
 
+                if [ ! -s "$GITHUB_WORKSPACE/Azure/conf/compose.yml" ]; then
+                  echo "::error::Local compose.yml is missing or empty"
+                  exit 1
+                fi
+                if [ ! -s "$RUNNER_TEMP/n8n.env" ]; then
+                  echo "::error::Generated .env is empty"
+                  exit 1
+                fi
+
                 az vm run-command invoke \
                   --command-id RunShellScript \
                   --name "$VM_NAME" \
                   --resource-group "$VM_RG" \
-                  --scripts 'set -euo pipefail
-                    sudo mkdir -p "$1"
-                    echo "$2" | base64 -d | sudo tee "$1/compose.yml" >/dev/null
-                    echo "$3" | base64 -d | sudo tee "$1/.env" >/dev/null
-                    sudo chown -R azureuser:azureuser "$1"
-                    sudo chmod 644 "$1/compose.yml"
-                    sudo chmod 640 "$1/.env"
-                    ls -la "$1"
-                  ' \
-                  --parameters "$REMOTE_DIR" "$COMPOSE_B64" "$ENV_B64"
+                  --scripts "set -euo pipefail
+                    REMOTE_DIR='$REMOTE_DIR'
+                    sudo mkdir -p \"\$REMOTE_DIR\"
+                    cat <<'COMPOSE_B64_EOF' | base64 -d | sudo tee \"\$REMOTE_DIR/compose.yml\" >/dev/null
+$COMPOSE_B64
+COMPOSE_B64_EOF
+                    cat <<'ENV_B64_EOF' | base64 -d | sudo tee \"\$REMOTE_DIR/.env\" >/dev/null
+$ENV_B64
+ENV_B64_EOF
+                    sudo chown -R azureuser:azureuser \"\$REMOTE_DIR\"
+                    sudo chmod 644 \"\$REMOTE_DIR/compose.yml\"
+                    sudo chmod 640 \"\$REMOTE_DIR/.env\"
+                    ls -la \"\$REMOTE_DIR\"
+                    wc -c \"\$REMOTE_DIR/compose.yml\" \"\$REMOTE_DIR/.env\"
+                  "
 
             - name: Run n8n bootstrap on VM
               run: |
