@@ -133,7 +133,24 @@ jobs:
                   --name "$VM_NAME" \
                   --resource-group "$VM_RG" \
                   --scripts @"$GITHUB_WORKSPACE/Azure/conf/copy-compose-to-vm.sh" \
-                  --parameters "$REMOTE_DIR" "$COMPOSE_B64" "$ENV_B64"
+                  --parameters "$REMOTE_DIR" "$COMPOSE_B64" "$ENV_B64" \
+                  --query "value[0].message" \
+                  --output tsv | tee "$RUNNER_TEMP/copy-compose.log"
+
+                COMPOSE_SIZE="$(awk '/\/compose\.yml$/ {print $1; exit}' "$RUNNER_TEMP/copy-compose.log")"
+                ENV_SIZE="$(awk '/\/\.env$/ {print $1; exit}' "$RUNNER_TEMP/copy-compose.log")"
+
+                if [ -z "${COMPOSE_SIZE:-}" ] || [ -z "${ENV_SIZE:-}" ]; then
+                  echo "::error::Unable to read remote file sizes from copy step output."
+                  cat "$RUNNER_TEMP/copy-compose.log"
+                  exit 1
+                fi
+
+                if [ "$COMPOSE_SIZE" -eq 0 ] || [ "$ENV_SIZE" -eq 0 ]; then
+                  echo "::error::Remote files are empty after copy (compose.yml=$COMPOSE_SIZE, .env=$ENV_SIZE)."
+                  cat "$RUNNER_TEMP/copy-compose.log"
+                  exit 1
+                fi
 
             - name: Run n8n bootstrap on VM
               run: |
