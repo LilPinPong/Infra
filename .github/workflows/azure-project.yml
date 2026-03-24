@@ -107,6 +107,8 @@ jobs:
                     POSTGRES_USER="psqladmin@psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
                     POSTGRES_PASSWORD=${{ secrets.AZURE_DB_PASSWORD }}
                   EOF"
+                  az vm run-command invoke --command-id RunShellScript --name vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --scripts @"cp $GITHUB_WORKSPACE/Azure/conf/compose.yml /home/azureuser/n8n/compose.yml"
+                  az vm run-command invoke --command-id RunShellScript --name vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --scripts "chmod 600 /home/azureuser/n8n/.env"
                   az vm run-command invoke --command-id RunShellScript --name vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --scripts @"$GITHUB_WORKSPACE/Azure/conf/n8n.sh"
             
             - name : Logout of Azure
