@@ -105,6 +105,16 @@ start_n8n_stack() {
   log "INFO" "🔍 Using compose file: $compose_file"
   compose_output="$(mktemp)"
 
+  # Ensure azureuser can read compose inputs before running docker compose as azureuser.
+  run_step "🔐 Ensure ownership of compose assets" sudo chown azureuser:azureuser "$compose_dir" "$compose_file" "$compose_dir/.env"
+  run_step "🔐 Ensure compose file permissions" sudo chmod 755 "$compose_dir"
+  run_step "🔐 Ensure compose.yml permissions" sudo chmod 644 "$compose_file"
+  run_step "🔐 Ensure .env permissions" sudo chmod 640 "$compose_dir/.env"
+  log "INFO" "🔍 Compose asset permissions:"
+  ls -ld "$compose_dir" | tee -a "$LOG_FILE"
+  ls -l "$compose_file" "$compose_dir/.env" | tee -a "$LOG_FILE"
+  id azureuser | tee -a "$LOG_FILE"
+
   if sudo -u azureuser bash -lc "cd '$compose_dir' && docker compose -f '$compose_file' --env-file '$compose_dir/.env' config" >"$compose_output" 2>&1; then
     log "INFO" "✅ Compose configuration is valid"
   else

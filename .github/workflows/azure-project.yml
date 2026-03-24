@@ -129,7 +129,7 @@ jobs:
                     echo "$3" | base64 -d | sudo tee "$1/.env" >/dev/null
                     sudo chown -R azureuser:azureuser "$1"
                     sudo chmod 644 "$1/compose.yml"
-                    sudo chmod 600 "$1/.env"
+                    sudo chmod 640 "$1/.env"
                     ls -la "$1"
                   ' \
                   --parameters "$REMOTE_DIR" "$COMPOSE_B64" "$ENV_B64"
