@@ -124,7 +124,7 @@ jobs:
                   echo "DB_NAME=PSQL_N8N"
                   echo "DB_PORT=5432"
                   echo "DB_HOST=psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}.postgres.database.azure.com"
-                  echo "DB_USER=psqladmin@psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                  echo "DB_USER=psqladmin"
                   echo "DB_SSL=true"
                   echo "DB_SSL_REJECT_UNAUTHORIZED=false"
                   printf 'DB_PASSWORD=%s\n' "${{ secrets.AZURE_DB_PASSWORD }}"
