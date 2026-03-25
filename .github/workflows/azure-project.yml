@@ -102,7 +102,7 @@ jobs:
                 N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
               run: |
                 set -euo pipefail
-                STORAGE_ACCOUNT_KEY="$(az storage account keys list --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --account-name st${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }} --query "[0].value" -o tsv)"
+                STORAGE_ACCOUNT_KEY="$(az storage account keys list --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --account-name stvm${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }} --query "[0].value" -o tsv)"
                 VM_NAME="vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
                 VM_RG="rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
                 REMOTE_DIR="/home/azureuser/n8n"
