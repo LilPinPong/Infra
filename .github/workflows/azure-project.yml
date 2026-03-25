@@ -99,7 +99,7 @@ jobs:
             - name: Copy compose.yml and .env to VM
               env:
                 AZURE_DB_PASSWORD: ${{ secrets.AZURE_DB_PASSWORD }}
-                N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+                N8N_ENCRYPTION_KEY: "testsfdjjfjkmfgjsjdfbsjknbljnljks"
               run: |
                 set -euo pipefail
                 STORAGE_ACCOUNT_KEY="$(az storage account keys list --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --account-name stvm${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }} --query "[0].value" -o tsv)"
