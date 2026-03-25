@@ -99,23 +99,34 @@ jobs:
             - name: Copy compose.yml and .env to VM
               env:
                 AZURE_DB_PASSWORD: ${{ secrets.AZURE_DB_PASSWORD }}
+                N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
               run: |
                 set -euo pipefail
-
+                STORAGE_ACCOUNT_KEY="$(az storage account keys list --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --account-name st${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }} --query "[0].value" -o tsv)"
                 VM_NAME="vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
                 VM_RG="rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
                 REMOTE_DIR="/home/azureuser/n8n"
 
                 COMPOSE_B64="$(base64 -w0 "$GITHUB_WORKSPACE/Azure/conf/compose.yml")"
 
+                if [ -z "${N8N_ENCRYPTION_KEY:-}" ]; then
+                  echo "::error::Missing secret N8N_ENCRYPTION_KEY"
+                  exit 1
+                fi
+
                 {
-                  echo "TZ=UTC-4"
-                  echo "POSTGRES_DATABASE=PSQL_N8N"
-                  echo "POSTGRES_PORT=5432"
-                  echo "POSTGRES_HOST=psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}.postgres.database.azure.com"
-                  echo "POSTGRES_USER=psqladmin@psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
-                  echo "POSTGRES_SCHEMA=public"
-                  printf 'POSTGRES_PASSWORD=%s\n' "$AZURE_DB_PASSWORD"
+                  echo "STORAGE_ACCOUNT_NAME=st${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }}"
+                  printf 'STORAGE_PASSWORD=%s\n' "$STORAGE_ACCOUNT_KEY"
+                  echo "N8N_SUBDOMAIN=n8n"
+                  echo "DOMAIN=gaby.com"
+                  printf 'ENCRYPTION_KEY=%s\n' "$N8N_ENCRYPTION_KEY"
+                  echo "TZ=America/Toronto"
+                  echo "DB_NAME=PSQL_N8N"
+                  echo "DB_PORT=5432"
+                  echo "DB_HOST=psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}.postgres.database.azure.com"
+                  echo "DB_USER=psqladmin@psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                  echo "DB_SSL=true"
+                  printf 'DB_PASSWORD=%s\n' "$AZURE_DB_PASSWORD"
                 } >"$RUNNER_TEMP/n8n.env"
                 ENV_B64="$(base64 -w0 "$RUNNER_TEMP/n8n.env")"
 

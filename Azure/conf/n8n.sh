@@ -85,6 +85,8 @@ start_n8n_stack() {
   local compose_dir
   local compose_file
   local compose_output
+  local caddy_dir
+  local caddy_file
 
   compose_dir="$(find_compose_dir)" || {
     log "ERROR" "🛑 No compose file found. Set COMPOSE_DIR or place compose file in /home/azureuser/conf."
@@ -104,15 +106,43 @@ start_n8n_stack() {
 
   log "INFO" "🔍 Using compose file: $compose_file"
   compose_output="$(mktemp)"
+  caddy_dir="$compose_dir/conf"
+  caddy_file="$caddy_dir/Caddyfile"
 
   # Ensure azureuser can read compose inputs before running docker compose as azureuser.
   run_step "🔐 Ensure ownership of compose assets" sudo chown azureuser:azureuser "$compose_dir" "$compose_file" "$compose_dir/.env"
   run_step "🔐 Ensure compose file permissions" sudo chmod 755 "$compose_dir"
   run_step "🔐 Ensure compose.yml permissions" sudo chmod 644 "$compose_file"
   run_step "🔐 Ensure .env permissions" sudo chmod 640 "$compose_dir/.env"
+  run_step "📁 Ensure caddy config directory" sudo mkdir -p "$caddy_dir"
+  run_step "🔐 Ensure caddy config ownership" sudo chown -R azureuser:azureuser "$caddy_dir"
+  run_step "🔐 Ensure caddy config permissions" sudo chmod 755 "$caddy_dir"
+
+  set -a
+  # shellcheck source=/dev/null
+  . "$compose_dir/.env"
+  set +a
+
+  if [ -z "${N8N_SUBDOMAIN:-}" ] || [ -z "${DOMAIN:-}" ]; then
+    log "ERROR" "🛑 N8N_SUBDOMAIN or DOMAIN missing in $compose_dir/.env"
+    return 1
+  fi
+
+  cat >"$compose_output" <<EOF
+${N8N_SUBDOMAIN}.${DOMAIN} {
+    reverse_proxy n8n:5678
+}
+EOF
+  run_step "🧱 Build Caddyfile" sudo cp "$compose_output" "$caddy_file"
+  run_step "🔐 Ensure Caddyfile ownership" sudo chown azureuser:azureuser "$caddy_file"
+  run_step "🔐 Ensure Caddyfile permissions" sudo chmod 644 "$caddy_file"
+  log "INFO" "🔍 Caddyfile generated for ${N8N_SUBDOMAIN}.${DOMAIN}"
+  rm -f "$compose_output"
+  compose_output="$(mktemp)"
   log "INFO" "🔍 Compose asset permissions:"
   ls -ld "$compose_dir" | tee -a "$LOG_FILE"
   ls -l "$compose_file" "$compose_dir/.env" | tee -a "$LOG_FILE"
+  ls -l "$caddy_file" | tee -a "$LOG_FILE"
   id azureuser | tee -a "$LOG_FILE"
 
   if sudo -u azureuser bash -lc "cd '$compose_dir' && docker compose -f '$compose_file' --env-file '$compose_dir/.env' config" >"$compose_output" 2>&1; then

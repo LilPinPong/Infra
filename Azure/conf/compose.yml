@@ -24,17 +24,28 @@ services:
     ports:
       - "5678:5678"
     environment:
+      - TZ=${TZ}
       - GENERIC_TIMEZONE=${TZ} 
-      - TZ=${TZ} 
-      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true 
+      - N8N_ENCRYPTION_KEY=${ENCRYPTION_KEY}
+
+      - N8N_HOST=${N8N_SUBDOMAIN}.${DOMAIN}
+      - WEBHOOK_URL=https://${N8N_SUBDOMAIN}.${DOMAIN}/webhook
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
       - N8N_RUNNERS_ENABLED=true
+
       - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_DATABASE=${POSTGRES_DATABASE}
-      - DB_POSTGRESDB_HOST=${POSTGRES_HOST}
-      - DB_POSTGRESDB_PORT=${POSTGRES_PORT}
-      - DB_POSTGRESDB_USER=${POSTGRES_USER}
-      - DB_POSTGRESDB_SCHEMA=${POSTGRES_SCHEMA}
-      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_POSTGRESDB_HOST=${DB_HOST}
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${DB_NAME}
+      - DB_POSTGRESDB_USER=${DB_USER}
+      - DB_POSTGRESDB_PASSWORD=${DB_PASSWORD}
+      - DB_POSTGRESDB_SSL=${DB_SSL}
+      - DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED=true
+      - DB_POSTGRESDB_SSL_CA=/home/node/.n8n/ssl/ca.crt
+      - DB_POSTGRESDB_SCHEMA=public
+      - EXECUTIONS_MODE=queue
+
     volumes:
       - n8n_data:/home/node/.n8n
     networks:
