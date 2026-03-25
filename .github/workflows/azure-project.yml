@@ -126,6 +126,7 @@ jobs:
                   echo "DB_HOST=psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}.postgres.database.azure.com"
                   echo "DB_USER=psqladmin@psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
                   echo "DB_SSL=true"
+                  echo "DB_SSL_REJECT_UNAUTHORIZED=false"
                   printf 'DB_PASSWORD=%s\n' "$AZURE_DB_PASSWORD"
                 } >"$RUNNER_TEMP/n8n.env"
                 ENV_B64="$(base64 -w0 "$RUNNER_TEMP/n8n.env")"
