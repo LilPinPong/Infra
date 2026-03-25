@@ -43,7 +43,7 @@ services:
       - DB_POSTGRESDB_SSL=${DB_SSL}
       - DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED=${DB_SSL_REJECT_UNAUTHORIZED}
       - DB_POSTGRESDB_SCHEMA=public
-      - EXECUTIONS_MODE=queue
+      - EXECUTIONS_MODE=regular
 
     volumes:
       - n8n_data:/home/node/.n8n
