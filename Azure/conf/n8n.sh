@@ -150,14 +150,21 @@ ${DOMAIN} {
 }
 EOF
 
+  if ! mountpoint -q "$mount_point"; then
+    log "ERROR" "🛑 Blob mount point is not mounted: $mount_point"
+    rm -f "$temp_caddy_file"
+    return 1
+  fi
+
+  run_step "📁 Ensure storage caddy directory" sudo mkdir -p "$storage_caddy_dir"
+
   if [ -f "$storage_caddy_file" ]; then
     log "INFO" "☁️ Caddyfile found in Storage Account, copying to VM"
-    run_step "📥 Copy Caddyfile from storage" sudo cp "$storage_caddy_file" "$caddy_file"
+    run_step "📥 Copy Caddyfile from storage" sudo install -m 644 "$storage_caddy_file" "$caddy_file"
   else
-    log "INFO" "☁️ Caddyfile not found in Storage Account, creating a new one"
-    run_step "🧱 Build local Caddyfile" sudo cp "$temp_caddy_file" "$caddy_file"
-    run_step "📁 Ensure storage caddy directory" sudo mkdir -p "$storage_caddy_dir"
-    run_step "📤 Copy Caddyfile to storage" sudo cp "$caddy_file" "$storage_caddy_file"
+    log "INFO" "☁️ Caddyfile not found in Storage Account, creating and uploading it"
+    run_step "📤 Create Caddyfile in storage" sudo install -m 644 "$temp_caddy_file" "$storage_caddy_file"
+    run_step "📥 Copy created Caddyfile from storage to VM" sudo install -m 644 "$storage_caddy_file" "$caddy_file"
   fi
 
   run_step "🔐 Ensure Caddyfile ownership" sudo chown azureuser:azureuser "$caddy_file"
