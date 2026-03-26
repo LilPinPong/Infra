@@ -33,7 +33,7 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = if (createKv) {
       family: 'A'
       name: skuName
     }
-    publicNetworkAccess:'Disabled'
+    publicNetworkAccess:'Enabled'
     tenantId: subscription().tenantId
     enableSoftDelete: true
     enablePurgeProtection: true
