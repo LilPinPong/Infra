@@ -128,6 +128,18 @@ mount_azure_files_share() {
       AZURE_STORAGE_ACCOUNT_CONTAINER="$container_name" \
       blobfuse2 mount "$mount_point" --tmp-path="$tmp_path"
   fi
+
+  # blobfuse2 can exit right after spawn if config/auth/network is wrong.
+  sleep 2
+  if ! mountpoint -q "$mount_point"; then
+    log "ERROR" "🛑 Blob mount is not active after mount attempt: $mount_point"
+    return 1
+  fi
+  if ! pgrep -x blobfuse2 >/dev/null 2>&1; then
+    log "ERROR" "🛑 blobfuse2 process is not running after mount attempt."
+    return 1
+  fi
+  log "INFO" "✅ Blob mount is active: $mount_point"
 }
 
 sync_caddyfile_from_storage_or_create() {
