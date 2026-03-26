@@ -48,6 +48,7 @@ resource psql 'Microsoft.DBforPostgreSQL/flexibleServers@2025-08-01' = {
 
 
 resource database 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2025-08-01' = {
+  parent: psql
   name: 'psql_${project_name}'
   properties: {
     charset: 'UTF8'
