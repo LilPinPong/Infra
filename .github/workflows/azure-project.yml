@@ -1,23 +1,12 @@
 name: Azure Project Deployment
 
 on:
-    # workflow_dispatch:
-    # workflow_run:
-    #     workflows: ["Azure Base Infrastructure Deployment"]
-    #     types:
-    #         - completed
-    push:
-        branches:
-            - main
-        paths:
-            - Azure/**
-            - .github/workflows/azure-infra.yml
-            - .github/workflows/azure-project.yml
-    pull_request:
-        paths:
-            - Azure/**
-            - .github/workflows/azure-infra.yml
-            - .github/workflows/azure-project.yml
+    workflow_dispatch:
+    workflow_run:
+        workflows: ["Azure Base Infrastructure Deployment"]
+        types:
+            - completed
+    
 env:
     AZURE_CREDENTIALS: '{"clientId": "${{secrets.AZURE_CLIENT_ID}}", "clientSecret": "${{secrets.AZURE_CLIENT_SECRET}}", "subscriptionId": "${{secrets.AZURE_SUBSCRIPTION_ID}}", "tenantId": "${{secrets.AZURE_TENANT_ID}}"}'
     AZURE_ENV: ${{vars.AZURE_ENV}}
@@ -40,66 +29,66 @@ jobs:
               with:
                   creds: ${{ env.AZURE_CREDENTIALS }} 
 
-            # - name: Deploy base project resources
-            #   run: |
-            #       set -euo pipefail
+            - name: Deploy base project resources
+              run: |
+                  set -euo pipefail
 
-            #       RG_NAME="rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
-            #       KV_NAME="kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
-            #       SSH_KEY_NAME="ssh-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
-            #       KEY_DIR="$RUNNER_TEMP/ssh"
-            #       PRIVATE_KEY_PATH="$KEY_DIR/$SSH_KEY_NAME"
-            #       PUBLIC_KEY_PATH="${PRIVATE_KEY_PATH}.pub"
+                  RG_NAME="rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                  KV_NAME="kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                  SSH_KEY_NAME="ssh-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                  KEY_DIR="$RUNNER_TEMP/ssh"
+                  PRIVATE_KEY_PATH="$KEY_DIR/$SSH_KEY_NAME"
+                  PUBLIC_KEY_PATH="${PRIVATE_KEY_PATH}.pub"
 
-            #       mkdir -p "$KEY_DIR"
+                  mkdir -p "$KEY_DIR"
 
-            #       az deployment sub create --name "$RG_NAME" --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep
+                  az deployment sub create --name "$RG_NAME" --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep
 
-            #       set +e
-            #       KV_CONNECTIVITY_OUTPUT="$(az keyvault secret list --vault-name "$KV_NAME" --maxresults 1 2>&1)"
-            #       KV_CONNECTIVITY_EXIT_CODE=$?
-            #       set -e
+                  set +e
+                  KV_CONNECTIVITY_OUTPUT="$(az keyvault secret list --vault-name "$KV_NAME" --maxresults 1 2>&1)"
+                  KV_CONNECTIVITY_EXIT_CODE=$?
+                  set -e
 
-            #       if [ "$KV_CONNECTIVITY_EXIT_CODE" -ne 0 ]; then
-            #           if echo "$KV_CONNECTIVITY_OUTPUT" | grep -q "ForbiddenByConnection"; then
-            #               echo "::error::Key Vault '$KV_NAME' is private-only and this runner has no approved network path. Use a self-hosted runner joined to your Azure VNet with Private DNS resolution."
-            #           else
-            #               echo "::error::Cannot access Key Vault '$KV_NAME'. Check data-plane permissions for this identity and verify private DNS/network routing."
-            #               echo "$KV_CONNECTIVITY_OUTPUT"
-            #           fi
-            #           exit 1
-            #       fi
+                  if [ "$KV_CONNECTIVITY_EXIT_CODE" -ne 0 ]; then
+                      if echo "$KV_CONNECTIVITY_OUTPUT" | grep -q "ForbiddenByConnection"; then
+                          echo "::error::Key Vault '$KV_NAME' is private-only and this runner has no approved network path. Use a self-hosted runner joined to your Azure VNet with Private DNS resolution."
+                      else
+                          echo "::error::Cannot access Key Vault '$KV_NAME'. Check data-plane permissions for this identity and verify private DNS/network routing."
+                          echo "$KV_CONNECTIVITY_OUTPUT"
+                      fi
+                      exit 1
+                  fi
 
-            #       if az keyvault secret show --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-private" >/dev/null 2>&1 && az keyvault secret show --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-public" >/dev/null 2>&1; then
-            #           echo "Using existing SSH key pair from Key Vault secrets"
-            #           az keyvault secret download --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-private" --file "$PRIVATE_KEY_PATH" >/dev/null
-            #           az keyvault secret download --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-public" --file "$PUBLIC_KEY_PATH" >/dev/null
-            #           chmod 600 "$PRIVATE_KEY_PATH"
-            #       else
-            #           echo "Creating SSH key pair and storing it in Key Vault secrets"
-            #           ssh-keygen -t rsa -b 4096 -m PEM -f "$PRIVATE_KEY_PATH" -N "" -C "$SSH_KEY_NAME"
-            #           az keyvault secret set --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-private" --file "$PRIVATE_KEY_PATH" >/dev/null
-            #           az keyvault secret set --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-public" --file "$PUBLIC_KEY_PATH" >/dev/null
-            #       fi
+                  if az keyvault secret show --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-private" >/dev/null 2>&1 && az keyvault secret show --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-public" >/dev/null 2>&1; then
+                      echo "Using existing SSH key pair from Key Vault secrets"
+                      az keyvault secret download --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-private" --file "$PRIVATE_KEY_PATH" >/dev/null
+                      az keyvault secret download --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-public" --file "$PUBLIC_KEY_PATH" >/dev/null
+                      chmod 600 "$PRIVATE_KEY_PATH"
+                  else
+                      echo "Creating SSH key pair and storing it in Key Vault secrets"
+                      ssh-keygen -t rsa -b 4096 -m PEM -f "$PRIVATE_KEY_PATH" -N "" -C "$SSH_KEY_NAME"
+                      az keyvault secret set --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-private" --file "$PRIVATE_KEY_PATH" >/dev/null
+                      az keyvault secret set --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-public" --file "$PUBLIC_KEY_PATH" >/dev/null
+                  fi
 
-            #       if az sshkey show --resource-group "$RG_NAME" --name "$SSH_KEY_NAME" >/dev/null 2>&1; then
-            #           echo "Azure SSH public key resource already exists"
-            #       else
-            #           echo "Creating Azure SSH public key resource"
-            #           az sshkey create --resource-group "$RG_NAME" --name "$SSH_KEY_NAME" --location ${{ env.LOCATION }} --public-key "@${PUBLIC_KEY_PATH}" >/dev/null
-            #       fi
+                  if az sshkey show --resource-group "$RG_NAME" --name "$SSH_KEY_NAME" >/dev/null 2>&1; then
+                      echo "Azure SSH public key resource already exists"
+                  else
+                      echo "Creating Azure SSH public key resource"
+                      az sshkey create --resource-group "$RG_NAME" --name "$SSH_KEY_NAME" --location ${{ env.LOCATION }} --public-key "@${PUBLIC_KEY_PATH}" >/dev/null
+                  fi
 
-            #       az deployment group create --resource-group rg-database-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/psql-db.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} adminPassword=${{ secrets.AZURE_DB_PASSWORD }} 
-            #       az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nsg.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
-            #       az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/pip.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-            #       az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nic.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-            #       az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vm.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-            #       az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/stvm.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+                  az deployment group create --resource-group rg-database-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/psql-db.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} adminPassword=${{ secrets.AZURE_DB_PASSWORD }} 
+                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nsg.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
+                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/pip.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nic.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vm.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+                  az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/stvm.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
 
             - name: Copy compose.yml and .env to VM
               env:
                 AZURE_DB_PASSWORD: ${{ secrets.AZURE_DB_PASSWORD }}
-                N8N_ENCRYPTION_KEY: "testsfdjjfjkmfgjsjdfbsjknbljnljks"
+                N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
               run: |
                 set -euo pipefail
                 STORAGE_ACCOUNT_KEY="$(az storage account keys list --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --account-name stvm${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }} --query "[0].value" -o tsv)"

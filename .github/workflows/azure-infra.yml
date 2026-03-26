@@ -1,137 +1,137 @@
-# name: Azure Base Infrastructure Deployment
-# on:
-#     push:
-#         branches:
-#             - main
-#         paths:
-#             - Azure/**
-#             - .github/workflows/azure-infra.yml
-#             - .github/workflows/azure-project.yml
-#     pull_request:
-#         paths:
-#             - Azure/**
-#             - .github/workflows/azure-infra.yml
-#             - .github/workflows/azure-project.yml
-#     workflow_dispatch:
+name: Azure Base Infrastructure Deployment
+on:
+    push:
+        branches:
+            - main
+        paths:
+            - Azure/**
+            - .github/workflows/azure-infra.yml
+            - .github/workflows/azure-project.yml
+    pull_request:
+        paths:
+            - Azure/**
+            - .github/workflows/azure-infra.yml
+            - .github/workflows/azure-project.yml
+    workflow_dispatch:
 
-# env:
-#     AZURE_CREDENTIALS: '{"clientId": "${{secrets.AZURE_CLIENT_ID}}", "clientSecret": "${{secrets.AZURE_CLIENT_SECRET}}", "subscriptionId": "${{secrets.AZURE_SUBSCRIPTION_ID}}", "tenantId": "${{secrets.AZURE_TENANT_ID}}"}'
-#     AZURE_ENV: ${{vars.AZURE_ENV}}
-#     PROJECT_NAME: ${{vars.PROJECT_NAME}}
-#     PROJECT_VERSION: ${{vars.PROJECT_VERSION}}
-#     LOCATION: ${{vars.LOCATION}}
+env:
+    AZURE_CREDENTIALS: '{"clientId": "${{secrets.AZURE_CLIENT_ID}}", "clientSecret": "${{secrets.AZURE_CLIENT_SECRET}}", "subscriptionId": "${{secrets.AZURE_SUBSCRIPTION_ID}}", "tenantId": "${{secrets.AZURE_TENANT_ID}}"}'
+    AZURE_ENV: ${{vars.AZURE_ENV}}
+    PROJECT_NAME: ${{vars.PROJECT_NAME}}
+    PROJECT_VERSION: ${{vars.PROJECT_VERSION}}
+    LOCATION: ${{vars.LOCATION}}
 
-# jobs:
-#     create_artifact:
-#         runs-on: ubuntu-latest
-#         environment: test
-#         steps:
-#             - name: Checkout
-#               uses: actions/checkout@v4
+jobs:
+    create_artifact:
+        runs-on: ubuntu-latest
+        environment: test
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-#             - name: Lint Bicep
-#               run: |
-#                   az bicep lint --file Azure/resources/rg.bicep
-#                   az bicep lint --file Azure/resources/nw.bicep
-#                   az bicep lint --file Azure/resources/vnet.bicep
-#                   az bicep lint --file Azure/resources/kv.bicep
+            - name: Lint Bicep
+              run: |
+                  az bicep lint --file Azure/resources/rg.bicep
+                  az bicep lint --file Azure/resources/nw.bicep
+                  az bicep lint --file Azure/resources/vnet.bicep
+                  az bicep lint --file Azure/resources/kv.bicep
 
-#             - name: Bicep Build
-#               run: |
-#                   mkdir -p ./Azure/resources/compiled
-#                   az bicep build --file Azure/resources/rg.bicep --outdir ./Azure/resources/compiled
-#                   az bicep build --file Azure/resources/nw.bicep --outdir ./Azure/resources/compiled
-#                   az bicep build --file Azure/resources/vnet.bicep --outdir ./Azure/resources/compiled
-#                   az bicep build --file Azure/resources/kv.bicep --outdir ./Azure/resources/compiled
+            - name: Bicep Build
+              run: |
+                  mkdir -p ./Azure/resources/compiled
+                  az bicep build --file Azure/resources/rg.bicep --outdir ./Azure/resources/compiled
+                  az bicep build --file Azure/resources/nw.bicep --outdir ./Azure/resources/compiled
+                  az bicep build --file Azure/resources/vnet.bicep --outdir ./Azure/resources/compiled
+                  az bicep build --file Azure/resources/kv.bicep --outdir ./Azure/resources/compiled
 
-#             - name: Upload artifact
-#               uses: actions/upload-artifact@v4
-#               with:
-#                   name: artifact-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}
-#                   path: ./Azure/
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: artifact-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}
+                  path: ./Azure/
 
-#     create_rg:
-#         needs: create_artifact
-#         environment: test
-#         runs-on: ubuntu-latest
-#         steps:
-#             - name: Checkout
-#               uses: actions/checkout@v4
+    create_rg:
+        needs: create_artifact
+        environment: test
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-#             - name: Login to Azure
-#               uses: azure/login@v2
-#               with:
-#                   creds: ${{ env.AZURE_CREDENTIALS }}
+            - name: Login to Azure
+              uses: azure/login@v2
+              with:
+                  creds: ${{ env.AZURE_CREDENTIALS }}
 
-#             - name: Deploy Resource Group
-#               run: |
-#                   az deployment sub create --name 'rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
-#                   az deployment sub create --name 'rg-privatedns-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
-#                   az deployment sub create --name 'rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
-#                   az deployment sub create --name 'rg-database-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
+            - name: Deploy Resource Group
+              run: |
+                  az deployment sub create --name 'rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
+                  az deployment sub create --name 'rg-privatedns-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
+                  az deployment sub create --name 'rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
+                  az deployment sub create --name 'rg-database-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
 
-#             - name: Logout of Azure
-#               run: |
-#                   az logout
+            - name: Logout of Azure
+              run: |
+                  az logout
     
-#     deploy_resources:
-#         needs: create_rg
-#         environment: test
-#         runs-on: ubuntu-latest
-#         steps:
-#             - name: Checkout
-#               uses: actions/checkout@v4
+    deploy_resources:
+        needs: create_rg
+        environment: test
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-#             - name: Login to Azure
-#               uses: azure/login@v2
-#               with:
-#                   creds: ${{ env.AZURE_CREDENTIALS }}
+            - name: Login to Azure
+              uses: azure/login@v2
+              with:
+                  creds: ${{ env.AZURE_CREDENTIALS }}
 
-#             - name: Check if Key Vault exists
-#               id: check_kv
-#               shell: bash
-#               run: |
-#                 KV_NAME="kv-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
-#                 RG_NAME="rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+            - name: Check if Key Vault exists
+              id: check_kv
+              shell: bash
+              run: |
+                KV_NAME="kv-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                RG_NAME="rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
 
-#                 if az keyvault show --name "$KV_NAME" --resource-group "$RG_NAME" >/dev/null 2>&1; then
-#                     echo "create_kv=false" >> "$GITHUB_OUTPUT"
-#                 else
-#                     echo "create_kv=true" >> "$GITHUB_OUTPUT"
-#                 fi
+                if az keyvault show --name "$KV_NAME" --resource-group "$RG_NAME" >/dev/null 2>&1; then
+                    echo "create_kv=false" >> "$GITHUB_OUTPUT"
+                else
+                    echo "create_kv=true" >> "$GITHUB_OUTPUT"
+                fi
                 
-#             - name: Deploy Resources
-#               run: |
-#                 az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nw.bicep    
-#                 az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vnet.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-#                 az deployment group create --resource-group rg-privatedns-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/privatedns.bicep --parameters environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-#                 az deployment group create --resource-group rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/kv.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} objectId=${{ secrets.AZURE_GITHUB_OBJECT_ID }} createKv=${{ steps.check_kv.outputs.create_kv }} 
+            - name: Deploy Resources
+              run: |
+                az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nw.bicep    
+                az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vnet.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+                az deployment group create --resource-group rg-privatedns-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/privatedns.bicep --parameters environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+                az deployment group create --resource-group rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/kv.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} objectId=${{ secrets.AZURE_GITHUB_OBJECT_ID }} createKv=${{ steps.check_kv.outputs.create_kv }} 
              
            
-#             - name: Logout of Azure 
-#               run: |
-#                   az logout              
+            - name: Logout of Azure 
+              run: |
+                  az logout              
 
     
-#     # checkov_scan:
-#     #     needs: create_artifact
-#     #     environment: test
-#     #     runs-on: ubuntu-latest
-#     #     steps:
-#     #         - name: Download artifact
-#     #           uses: actions/download-artifact@v4
-#     #           with:
-#     #               name: artifact-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}
-#     #               path: ./Azure/
+    # checkov_scan:
+    #     needs: create_artifact
+    #     environment: test
+    #     runs-on: ubuntu-latest
+    #     steps:
+    #         - name: Download artifact
+    #           uses: actions/download-artifact@v4
+    #           with:
+    #               name: artifact-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}
+    #               path: ./Azure/
 
-#     #         - name: Checkov Scan (Bicep source)
-#     #           uses: bridgecrewio/checkov-action@v12
-#     #           with:
-#     #               directory: ./Azure/
-#     #               framework: bicep
+    #         - name: Checkov Scan (Bicep source)
+    #           uses: bridgecrewio/checkov-action@v12
+    #           with:
+    #               directory: ./Azure/
+    #               framework: bicep
 
-#     #         - name: Checkov Scan (ARM compiled)
-#     #           uses: bridgecrewio/checkov-action@v12
-#     #           with:
-#     #               directory: ./Azure/resources/compiled
-#     #               framework: arm
+    #         - name: Checkov Scan (ARM compiled)
+    #           uses: bridgecrewio/checkov-action@v12
+    #           with:
+    #               directory: ./Azure/resources/compiled
+    #               framework: arm
