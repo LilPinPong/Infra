@@ -61,36 +61,6 @@ ensure_azureuser_docker_group() {
   fi
 }
 
-install_blobfuse2() {
-  local os_id
-  local os_version
-  local pkg_url
-  local pkg_file
-
-  if command -v blobfuse2 >/dev/null 2>&1; then
-    log "INFO" "☁️ blobfuse2 is already installed"
-    return 0
-  fi
-
-  if sudo apt-get install -y fuse3 blobfuse2 >>"$LOG_FILE" 2>&1; then
-    log "INFO" "☁️ blobfuse2 installed from existing apt repositories"
-    return 0
-  fi
-
-  run_step "📦 Install apt prerequisites for blobfuse2" sudo apt-get install -y ca-certificates curl wget gnupg lsb-release
-
-  os_id="$(. /etc/os-release && echo "${ID}")"
-  os_version="$(. /etc/os-release && echo "${VERSION_ID}")"
-  pkg_url="https://packages.microsoft.com/config/${os_id}/${os_version}/packages-microsoft-prod.deb"
-  pkg_file="/tmp/packages-microsoft-prod.deb"
-
-  run_step "⬇️ Download Microsoft Linux repo package" wget -qO "$pkg_file" "$pkg_url"
-  run_step "📦 Register Microsoft Linux repo" sudo dpkg -i "$pkg_file"
-  rm -f "$pkg_file"
-
-  run_step "🔄 Refresh apt index" sudo apt-get update -y
-  run_step "☁️ Install blobfuse2 package" sudo apt-get install -y fuse3 blobfuse2
-}
 
 mount_azure_files_share() {
   local storage_account
