@@ -29,10 +29,11 @@ services:
       - N8N_ENCRYPTION_KEY=${ENCRYPTION_KEY}
 
       - N8N_HOST=${N8N_SUBDOMAIN}.${DOMAIN}
-      - WEBHOOK_URL=https://${N8N_SUBDOMAIN}.${DOMAIN}/webhook
+      - WEBHOOK_URL=https://${N8N_SUBDOMAIN}.${DOMAIN}/
+      - N8N_EDITOR_BASE_URL=https://${N8N_SUBDOMAIN}.${DOMAIN}/
+      - N8N_PROXY_HOPS=1
       - N8N_PORT=5678
       - N8N_PROTOCOL=https
-      - N8N_RUNNERS_ENABLED=true
 
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=${DB_HOST}
