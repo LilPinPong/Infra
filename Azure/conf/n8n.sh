@@ -129,7 +129,6 @@ mount_azure_files_share() {
       blobfuse2 mount "$mount_point" --tmp-path="$tmp_path"
   fi
 
-  # blobfuse2 can exit right after spawn if config/auth/network is wrong.
   sleep 2
   if ! mountpoint -q "$mount_point"; then
     log "ERROR" "🛑 Blob mount is not active after mount attempt: $mount_point"
@@ -146,12 +145,14 @@ sync_caddyfile_from_storage_or_create() {
   local caddy_file="$1"
   local mount_point
   local container_name
+  local storage_caddy_dir
   local storage_caddy_file
   local temp_caddy_file
 
   container_name="${AZURE_BLOB_CONTAINER:-${AZURE_BLOB_CONTAINER_NAME:-${AZURE_STORAGE_ACCOUNT_CONTAINER:-${AZURE_STORAGE_CONTAINER_NAME:-${R_STORAGE_CONTAINER:-${AZURE_FILE_SHARE:-${FILE_SHARE_NAME:-${R_FILE_SHARE_NAME:-share-azureinfra-dev-01}}}}}}}}"
   mount_point="${AZURE_MOUNT_POINT:-/media/${container_name}}"
-  storage_caddy_file="${AZURE_CADDYFILE_PATH:-${mount_point}/Caddyfile}"
+  storage_caddy_dir="${AZURE_CADDY_DIR_PATH:-${mount_point}/caddy}"
+  storage_caddy_file="${AZURE_CADDYFILE_PATH:-${storage_caddy_dir}/Caddyfile}"
   temp_caddy_file="$(mktemp)"
 
   cat >"$temp_caddy_file" <<EOF
@@ -166,24 +167,14 @@ EOF
     return 1
   fi
 
-  log "INFO" "🔎 Caddy storage target path: $storage_caddy_file"
-
   if [ -f "$storage_caddy_file" ]; then
-    log "INFO" "☁️ Caddyfile found in Storage Account, copying to VM"
+    log "INFO" "☁️ Caddyfile found in storage, copying to VM conf"
     run_step "📥 Copy Caddyfile from storage" sudo install -m 644 "$storage_caddy_file" "$caddy_file"
   else
-    log "INFO" "☁️ Caddyfile not found in Storage Account, creating it in the container then copying to VM"
-    run_step "📤 Create Caddyfile in storage container" sudo install -m 644 "$temp_caddy_file" "$storage_caddy_file"
-    run_step "🔄 Flush blobfuse writes" sync
-    run_step "📥 Copy Caddyfile from storage to VM" sudo install -m 644 "$storage_caddy_file" "$caddy_file"
-  fi
-
-  if [ -f "$storage_caddy_file" ]; then
-    log "INFO" "✅ Caddyfile present in storage at $storage_caddy_file"
-  else
-    log "ERROR" "🛑 Caddyfile is still missing in storage at $storage_caddy_file"
-    rm -f "$temp_caddy_file"
-    return 1
+    log "INFO" "☁️ Caddyfile not found, creating /caddy/Caddyfile in storage then copying to VM conf"
+    run_step "📁 Create /caddy directory in storage" sudo mkdir -p "$storage_caddy_dir"
+    run_step "📤 Create Caddyfile in storage" sudo install -m 644 "$temp_caddy_file" "$storage_caddy_file"
+    run_step "📥 Copy created Caddyfile to VM conf" sudo install -m 644 "$storage_caddy_file" "$caddy_file"
   fi
 
   run_step "🔐 Ensure Caddyfile ownership" sudo chown azureuser:azureuser "$caddy_file"
