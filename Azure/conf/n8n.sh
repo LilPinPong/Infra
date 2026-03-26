@@ -64,8 +64,13 @@ ensure_azureuser_docker_group() {
 install_blobfuse2() {
   local os_id
   local os_version
+  local os_major
   local pkg_url
   local pkg_file
+  local blobfuse2_version
+  local blobfuse2_deb_name
+  local blobfuse2_deb_url
+  local blobfuse2_deb_file
 
   if command -v blobfuse2 >/dev/null 2>&1; then
     log "INFO" "☁️ blobfuse2 is already installed"
@@ -89,7 +94,21 @@ install_blobfuse2() {
   rm -f "$pkg_file"
 
   run_step "🔄 Refresh apt index" sudo apt-get update -y
-  run_step "☁️ Install blobfuse2 package" sudo apt-get install -y fuse3 blobfuse2
+  if sudo apt-get install -y fuse3 blobfuse2 >>"$LOG_FILE" 2>&1; then
+    log "INFO" "☁️ blobfuse2 installed from Microsoft apt repository"
+    return 0
+  fi
+
+  # Fallback for distros where apt repos do not publish blobfuse2 yet.
+  os_major="${os_version%%.*}"
+  blobfuse2_version="${BLOBFUSE2_VERSION:-2.5.3}"
+  blobfuse2_deb_name="blobfuse2-${blobfuse2_version}-Debian-${os_major}.0.x86_64.deb"
+  blobfuse2_deb_url="https://github.com/Azure/azure-storage-fuse/releases/download/blobfuse2-${blobfuse2_version}/${blobfuse2_deb_name}"
+  blobfuse2_deb_file="/tmp/${blobfuse2_deb_name}"
+
+  run_step "⬇️ Download blobfuse2 Debian package from GitHub Releases" wget -qO "$blobfuse2_deb_file" "$blobfuse2_deb_url"
+  run_step "☁️ Install blobfuse2 Debian package" sudo apt-get install -y "$blobfuse2_deb_file"
+  rm -f "$blobfuse2_deb_file"
 }
 
 mount_azure_files_share() {
