@@ -111,18 +111,41 @@ install_blobfuse2() {
   rm -f "$blobfuse2_deb_file"
 }
 
+ensure_blobfuse_runtime_compat() {
+  local fuse_candidate
+
+  if blobfuse2 --version >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if [ ! -e "/usr/lib/x86_64-linux-gnu/libfuse3.so.3" ]; then
+    fuse_candidate="$(ls /usr/lib/x86_64-linux-gnu/libfuse3.so.3.* 2>/dev/null | head -n1 || true)"
+    if [ -n "$fuse_candidate" ]; then
+      run_step "🔧 Create libfuse3.so.3 compatibility symlink" sudo ln -sf "$fuse_candidate" /usr/lib/x86_64-linux-gnu/libfuse3.so.3
+      run_step "🔄 Refresh linker cache" sudo ldconfig
+    fi
+  fi
+
+  if ! blobfuse2 --version >/dev/null 2>&1; then
+    log "ERROR" "🛑 blobfuse2 is installed but runtime dependencies are missing."
+    return 1
+  fi
+}
+
 mount_azure_files_share() {
   local storage_account
   local storage_key
   local container_name
   local mount_point
   local tmp_path
+  local mount_backup_path
 
   storage_account="${AZURE_STORAGE_ACCOUNT:-${AZURE_STORAGE_ACCOUNT_NAME:-${STORAGE_ACCOUNT_NAME:-${R_STORAGE_ACCOUNT_NAME:-}}}}"
   storage_key="${AZURE_STORAGE_ACCESS_KEY:-${AZURE_STORAGE_KEY:-${AZURE_STORAGE_ACCOUNT_KEY:-${AZURE_STORAGE_ACCOUNT_PASSWORD:-${STORAGE_ACCOUNT_PASSWORD:-${R_STORAGE_ACCOUNT_PASSWORD:-${R_STORAGE_PASSWORD:-}}}}}}}"
   container_name="${AZURE_BLOB_CONTAINER:-${AZURE_BLOB_CONTAINER_NAME:-${AZURE_STORAGE_ACCOUNT_CONTAINER:-${AZURE_STORAGE_CONTAINER_NAME:-${R_STORAGE_CONTAINER:-${AZURE_FILE_SHARE:-${FILE_SHARE_NAME:-${R_FILE_SHARE_NAME:-share-azureinfra-dev-01}}}}}}}}"
   mount_point="${AZURE_MOUNT_POINT:-/media/${container_name}}"
   tmp_path="${AZURE_BLOBFUSE_TMP_PATH:-/mnt/blobfuse2tmp/${container_name}}"
+  mount_backup_path="/tmp/blobfuse2-local-backup-${container_name}-$(date +%s)"
 
   if [ -z "$storage_account" ] || [ -z "$storage_key" ] || [ -z "$container_name" ]; then
     log "ERROR" "🛑 Missing blob settings. Provide account, key and container (AZURE_* or R_* variables)."
@@ -130,6 +153,7 @@ mount_azure_files_share() {
   fi
 
   install_blobfuse2
+  ensure_blobfuse_runtime_compat
 
   run_step "📁 Create blob mount directory" sudo mkdir -p "$mount_point"
   run_step "📁 Create blobfuse cache directory" sudo mkdir -p "$tmp_path"
@@ -139,6 +163,12 @@ mount_azure_files_share() {
   if mountpoint -q "$mount_point"; then
     log "INFO" "☁️ Blob container already mounted at $mount_point"
   else
+    if sudo find "$mount_point" -mindepth 1 -print -quit | grep -q .; then
+      run_step "📁 Create local backup directory for mount path" sudo mkdir -p "$mount_backup_path"
+      run_step "📦 Backup existing local files from mount directory" sudo find "$mount_point" -mindepth 1 -maxdepth 1 -exec mv -t "$mount_backup_path" {} +
+      log "INFO" "📦 Local files moved to $mount_backup_path before blob mount"
+    fi
+
     run_step "☁️ Mount Blob container with blobfuse2" \
       sudo env \
       AZURE_STORAGE_ACCOUNT="$storage_account" \
