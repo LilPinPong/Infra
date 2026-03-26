@@ -71,13 +71,6 @@ jobs:
                       az keyvault secret set --vault-name "$KV_NAME" --name "${SSH_KEY_NAME}-public" --file "$PUBLIC_KEY_PATH" >/dev/null
                   fi
 
-                  if az sshkey show --resource-group "$RG_NAME" --name "$SSH_KEY_NAME" >/dev/null 2>&1; then
-                      echo "Azure SSH public key resource already exists"
-                  else
-                      echo "Creating Azure SSH public key resource"
-                      az sshkey create --resource-group "$RG_NAME" --name "$SSH_KEY_NAME" --location ${{ env.LOCATION }} --public-key "@${PUBLIC_KEY_PATH}" >/dev/null
-                  fi
-
                   az deployment group create --resource-group rg-database-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/psql-db.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} adminPassword=${{ secrets.AZURE_DB_PASSWORD }} 
                   az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nsg.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
                   az deployment group create --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/pip.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
