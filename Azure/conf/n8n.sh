@@ -99,9 +99,9 @@ mount_azure_files_share() {
   local mount_point
   local tmp_path
 
-  storage_account="${AZURE_STORAGE_ACCOUNT:-${STORAGE_ACCOUNT_NAME:-${R_STORAGE_ACCOUNT_NAME:-}}}"
-  storage_key="${AZURE_STORAGE_ACCESS_KEY:-${AZURE_STORAGE_KEY:-${STORAGE_ACCOUNT_PASSWORD:-${R_STORAGE_ACCOUNT_PASSWORD:-}}}}"
-  container_name="${AZURE_BLOB_CONTAINER:-${AZURE_STORAGE_ACCOUNT_CONTAINER:-${AZURE_FILE_SHARE:-${FILE_SHARE_NAME:-${R_FILE_SHARE_NAME:-share-azureinfra-dev-01}}}}}"
+  storage_account="${AZURE_STORAGE_ACCOUNT:-${AZURE_STORAGE_ACCOUNT_NAME:-${STORAGE_ACCOUNT_NAME:-${R_STORAGE_ACCOUNT_NAME:-}}}}"
+  storage_key="${AZURE_STORAGE_ACCESS_KEY:-${AZURE_STORAGE_KEY:-${AZURE_STORAGE_ACCOUNT_KEY:-${AZURE_STORAGE_ACCOUNT_PASSWORD:-${STORAGE_ACCOUNT_PASSWORD:-${R_STORAGE_ACCOUNT_PASSWORD:-}}}}}}"
+  container_name="${AZURE_BLOB_CONTAINER:-${AZURE_BLOB_CONTAINER_NAME:-${AZURE_STORAGE_ACCOUNT_CONTAINER:-${AZURE_STORAGE_CONTAINER_NAME:-${AZURE_FILE_SHARE:-${FILE_SHARE_NAME:-${R_FILE_SHARE_NAME:-share-azureinfra-dev-01}}}}}}}"
   mount_point="${AZURE_MOUNT_POINT:-/media/${container_name}}"
   tmp_path="${AZURE_BLOBFUSE_TMP_PATH:-/mnt/blobfuse2tmp/${container_name}}"
 
@@ -138,7 +138,7 @@ sync_caddyfile_from_storage_or_create() {
   local storage_caddy_dir
   local temp_caddy_file
 
-  container_name="${AZURE_BLOB_CONTAINER:-${AZURE_STORAGE_ACCOUNT_CONTAINER:-${AZURE_FILE_SHARE:-${FILE_SHARE_NAME:-${R_FILE_SHARE_NAME:-share-azureinfra-dev-01}}}}}"
+  container_name="${AZURE_BLOB_CONTAINER:-${AZURE_BLOB_CONTAINER_NAME:-${AZURE_STORAGE_ACCOUNT_CONTAINER:-${AZURE_STORAGE_CONTAINER_NAME:-${AZURE_FILE_SHARE:-${FILE_SHARE_NAME:-${R_FILE_SHARE_NAME:-share-azureinfra-dev-01}}}}}}}"
   mount_point="${AZURE_MOUNT_POINT:-/media/${container_name}}"
   storage_caddy_file="${AZURE_CADDYFILE_PATH:-${mount_point}/caddy/Caddyfile}"
   storage_caddy_dir="$(dirname "$storage_caddy_file")"
@@ -183,6 +183,27 @@ find_compose_dir() {
   done
 
   return 1
+}
+
+load_compose_env_if_present() {
+  local compose_dir
+  local env_file
+
+  compose_dir="$(find_compose_dir)" || {
+    log "INFO" "ℹ️ No compose directory found yet, skip env preload"
+    return 0
+  }
+
+  env_file="$compose_dir/.env"
+  if [ -f "$env_file" ]; then
+    log "INFO" "🔧 Preloading environment from $env_file"
+    set -a
+    # shellcheck source=/dev/null
+    . "$env_file"
+    set +a
+  else
+    log "INFO" "ℹ️ No .env file found at $env_file, using process environment only"
+  fi
 }
 
 start_n8n_stack() {
@@ -277,6 +298,7 @@ main() {
   install_docker
   run_step "🐳 Enable and start Docker service" sudo systemctl enable --now docker
   ensure_azureuser_docker_group
+  load_compose_env_if_present
   mount_azure_files_share
   start_n8n_stack
   log "INFO" "🎉 Deployment update completed"
