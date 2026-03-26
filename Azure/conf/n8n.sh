@@ -135,15 +135,11 @@ sync_caddyfile_from_storage_or_create() {
   local mount_point
   local container_name
   local storage_caddy_file
-  local storage_caddy_dir
-  local legacy_storage_caddy_file
   local temp_caddy_file
 
   container_name="${AZURE_BLOB_CONTAINER:-${AZURE_BLOB_CONTAINER_NAME:-${AZURE_STORAGE_ACCOUNT_CONTAINER:-${AZURE_STORAGE_CONTAINER_NAME:-${R_STORAGE_CONTAINER:-${AZURE_FILE_SHARE:-${FILE_SHARE_NAME:-${R_FILE_SHARE_NAME:-share-azureinfra-dev-01}}}}}}}}"
   mount_point="${AZURE_MOUNT_POINT:-/media/${container_name}}"
   storage_caddy_file="${AZURE_CADDYFILE_PATH:-${mount_point}/Caddyfile}"
-  storage_caddy_dir="$(dirname "$storage_caddy_file")"
-  legacy_storage_caddy_file="${mount_point}/caddy/Caddyfile"
   temp_caddy_file="$(mktemp)"
 
   cat >"$temp_caddy_file" <<EOF
@@ -158,19 +154,13 @@ EOF
     return 1
   fi
 
-  run_step "📁 Ensure storage caddy directory" sudo mkdir -p "$storage_caddy_dir"
-
   if [ -f "$storage_caddy_file" ]; then
     log "INFO" "☁️ Caddyfile found in Storage Account, copying to VM"
     run_step "📥 Copy Caddyfile from storage" sudo install -m 644 "$storage_caddy_file" "$caddy_file"
-  elif [ -f "$legacy_storage_caddy_file" ]; then
-    log "INFO" "☁️ Caddyfile found at legacy path in Storage Account, copying to VM and normalizing location"
-    run_step "📥 Copy legacy Caddyfile from storage" sudo install -m 644 "$legacy_storage_caddy_file" "$caddy_file"
-    run_step "📤 Copy Caddyfile to normalized storage path" sudo install -m 644 "$legacy_storage_caddy_file" "$storage_caddy_file"
   else
-    log "INFO" "☁️ Caddyfile not found in Storage Account, creating and uploading it"
-    run_step "📤 Create Caddyfile in storage" sudo install -m 644 "$temp_caddy_file" "$storage_caddy_file"
-    run_step "📥 Copy created Caddyfile from storage to VM" sudo install -m 644 "$storage_caddy_file" "$caddy_file"
+    log "INFO" "☁️ Caddyfile not found in Storage Account, creating it in the container then copying to VM"
+    run_step "📤 Create Caddyfile in storage container" sudo install -m 644 "$temp_caddy_file" "$storage_caddy_file"
+    run_step "📥 Copy Caddyfile from storage to VM" sudo install -m 644 "$storage_caddy_file" "$caddy_file"
   fi
 
   if [ -f "$storage_caddy_file" ]; then
