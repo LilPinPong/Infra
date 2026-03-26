@@ -61,6 +61,96 @@ ensure_azureuser_docker_group() {
   fi
 }
 
+mount_azure_files_share() {
+  local storage_account
+  local storage_key
+  local file_share
+  local mount_point
+  local cred_dir
+  local cred_file
+  local share_path
+  local fstab_entry
+  local azure_uid
+  local azure_gid
+  local tmp_creds
+
+  storage_account="${AZURE_STORAGE_ACCOUNT:-}"
+  storage_key="${AZURE_STORAGE_KEY:-}"
+  file_share="${AZURE_FILE_SHARE:-}"
+  mount_point="${AZURE_MOUNT_POINT:-/mnt/azurefiles}"
+
+  if [ -z "$storage_account" ] || [ -z "$storage_key" ] || [ -z "$file_share" ]; then
+    log "ERROR" "🛑 AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_KEY or AZURE_FILE_SHARE is missing."
+    return 1
+  fi
+
+  cred_dir="/etc/smbcredentials"
+  cred_file="${cred_dir}/${storage_account}.cred"
+  share_path="//${storage_account}.file.core.windows.net/${file_share}"
+  azure_uid="$(id -u azureuser)"
+  azure_gid="$(id -g azureuser)"
+
+  run_step "📦 Install cifs-utils" sudo apt-get install -y cifs-utils
+  run_step "📁 Create smb credentials directory" sudo mkdir -p "$cred_dir"
+
+  tmp_creds="$(mktemp)"
+  chmod 600 "$tmp_creds"
+  cat >"$tmp_creds" <<EOF
+username=${storage_account}
+password=${storage_key}
+EOF
+  run_step "🔐 Install SMB credentials file" sudo install -m 600 "$tmp_creds" "$cred_file"
+  rm -f "$tmp_creds"
+
+  run_step "📁 Create Azure Files mount point" sudo mkdir -p "$mount_point"
+
+  fstab_entry="${share_path} ${mount_point} cifs nofail,_netdev,credentials=${cred_file},uid=${azure_uid},gid=${azure_gid},dir_mode=0770,file_mode=0660,serverino,vers=3.0,actimeo=30,mfsymlinks,nosharesock,x-systemd.automount 0 0"
+  if grep -qF "${share_path} ${mount_point} cifs" /etc/fstab; then
+    log "INFO" "🧾 Azure Files fstab entry already present"
+  else
+    run_step "🧾 Add Azure Files mount to fstab" sudo bash -lc "printf '%s\n' \"$fstab_entry\" >> /etc/fstab"
+  fi
+
+  if mountpoint -q "$mount_point"; then
+    log "INFO" "☁️ Azure Files share already mounted at $mount_point"
+  else
+    run_step "☁️ Mount Azure Files share" sudo mount "$mount_point"
+  fi
+}
+
+sync_caddyfile_from_storage_or_create() {
+  local caddy_file="$1"
+  local mount_point
+  local storage_caddy_file
+  local storage_caddy_dir
+  local temp_caddy_file
+
+  mount_point="${AZURE_MOUNT_POINT:-/mnt/azurefiles}"
+  storage_caddy_file="${AZURE_CADDYFILE_PATH:-${mount_point}/caddy/Caddyfile}"
+  storage_caddy_dir="$(dirname "$storage_caddy_file")"
+  temp_caddy_file="$(mktemp)"
+
+  cat >"$temp_caddy_file" <<EOF
+${DOMAIN} {
+    reverse_proxy n8n:5678
+}
+EOF
+
+  if [ -f "$storage_caddy_file" ]; then
+    log "INFO" "☁️ Caddyfile found in Storage Account, copying to VM"
+    run_step "📥 Copy Caddyfile from storage" sudo cp "$storage_caddy_file" "$caddy_file"
+  else
+    log "INFO" "☁️ Caddyfile not found in Storage Account, creating a new one"
+    run_step "🧱 Build local Caddyfile" sudo cp "$temp_caddy_file" "$caddy_file"
+    run_step "📁 Ensure storage caddy directory" sudo mkdir -p "$storage_caddy_dir"
+    run_step "📤 Copy Caddyfile to storage" sudo cp "$caddy_file" "$storage_caddy_file"
+  fi
+
+  run_step "🔐 Ensure Caddyfile ownership" sudo chown azureuser:azureuser "$caddy_file"
+  run_step "🔐 Ensure Caddyfile permissions" sudo chmod 644 "$caddy_file"
+  rm -f "$temp_caddy_file"
+}
+
 find_compose_dir() {
   local candidates=(
     "${COMPOSE_DIR:-}"
@@ -105,7 +195,6 @@ start_n8n_stack() {
   fi
 
   log "INFO" "🔍 Using compose file: $compose_file"
-  compose_output="$(mktemp)"
   caddy_dir="$compose_dir/conf"
   caddy_file="$caddy_dir/Caddyfile"
 
@@ -128,16 +217,8 @@ start_n8n_stack() {
     return 1
   fi
 
-  cat >"$compose_output" <<EOF
-${DOMAIN} {
-    reverse_proxy n8n:5678
-}
-EOF
-  run_step "🧱 Build Caddyfile" sudo cp "$compose_output" "$caddy_file"
-  run_step "🔐 Ensure Caddyfile ownership" sudo chown azureuser:azureuser "$caddy_file"
-  run_step "🔐 Ensure Caddyfile permissions" sudo chmod 644 "$caddy_file"
-  log "INFO" "🔍 Caddyfile generated for ${DOMAIN}"
-  rm -f "$compose_output"
+  sync_caddyfile_from_storage_or_create "$caddy_file"
+  log "INFO" "🔍 Caddyfile ready for ${DOMAIN}"
   compose_output="$(mktemp)"
   log "INFO" "🔍 Compose asset permissions:"
   ls -ld "$compose_dir" | tee -a "$LOG_FILE"
@@ -182,6 +263,7 @@ main() {
   install_docker
   run_step "🐳 Enable and start Docker service" sudo systemctl enable --now docker
   ensure_azureuser_docker_group
+  mount_azure_files_share
   start_n8n_stack
   log "INFO" "🎉 Deployment update completed"
 }
