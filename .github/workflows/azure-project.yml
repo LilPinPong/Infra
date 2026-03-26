@@ -118,7 +118,7 @@ jobs:
                   echo "STORAGE_ACCOUNT_NAME=st${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }}"
                   printf 'STORAGE_PASSWORD=%s\n' "$STORAGE_ACCOUNT_KEY"
                   echo "N8N_SUBDOMAIN=n8n"
-                  echo "DOMAIN=domain-azureinfra-dev-01.canadacentral.cloudapp.azure.com"
+                  echo "DOMAIN=lilpinpong.canadacentral.cloudapp.azure.com"
                   printf 'ENCRYPTION_KEY=%s\n' "$N8N_ENCRYPTION_KEY"
                   echo "TZ=America/Toronto"
                   echo "DB_NAME=PSQL_N8N"
