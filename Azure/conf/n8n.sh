@@ -68,53 +68,44 @@ mount_azure_files_share() {
   local mount_point
   local cred_dir
   local cred_file
-  local share_path
-  local fstab_entry
-  local azure_uid
-  local azure_gid
   local tmp_creds
 
-  storage_account="${AZURE_STORAGE_ACCOUNT:-}"
-  storage_key="${AZURE_STORAGE_KEY:-}"
-  file_share="${AZURE_FILE_SHARE:-}"
-  mount_point="${AZURE_MOUNT_POINT:-/mnt/azurefiles}"
+  storage_account="${AZURE_STORAGE_ACCOUNT:-${R_STORAGE_ACCOUNT_NAME:-}}"
+  storage_key="${AZURE_STORAGE_KEY:-${R_STORAGE_ACCOUNT_PASSWORD:-}}"
+  file_share="${AZURE_FILE_SHARE:-${R_FILE_SHARE_NAME:-}}"
+  mount_point="${AZURE_MOUNT_POINT:-/media/${file_share}}"
 
   if [ -z "$storage_account" ] || [ -z "$storage_key" ] || [ -z "$file_share" ]; then
-    log "ERROR" "🛑 AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_KEY or AZURE_FILE_SHARE is missing."
+    log "ERROR" "🛑 Missing storage settings. Provide AZURE_* or R_* variables (account, key/password, share)."
     return 1
   fi
 
   cred_dir="/etc/smbcredentials"
   cred_file="${cred_dir}/${storage_account}.cred"
-  share_path="//${storage_account}.file.core.windows.net/${file_share}"
-  azure_uid="$(id -u azureuser)"
-  azure_gid="$(id -g azureuser)"
 
   run_step "📦 Install cifs-utils" sudo apt-get install -y cifs-utils
+  run_step "📁 Create mount directory" sudo mkdir -p "$mount_point"
   run_step "📁 Create smb credentials directory" sudo mkdir -p "$cred_dir"
 
-  tmp_creds="$(mktemp)"
-  chmod 600 "$tmp_creds"
-  cat >"$tmp_creds" <<EOF
+  if [ ! -f "$cred_file" ]; then
+    tmp_creds="$(mktemp)"
+    chmod 600 "$tmp_creds"
+    cat >"$tmp_creds" <<EOF
 username=${storage_account}
 password=${storage_key}
 EOF
-  run_step "🔐 Install SMB credentials file" sudo install -m 600 "$tmp_creds" "$cred_file"
-  rm -f "$tmp_creds"
-
-  run_step "📁 Create Azure Files mount point" sudo mkdir -p "$mount_point"
-
-  fstab_entry="${share_path} ${mount_point} cifs nofail,_netdev,credentials=${cred_file},uid=${azure_uid},gid=${azure_gid},dir_mode=0770,file_mode=0660,serverino,vers=3.0,actimeo=30,mfsymlinks,nosharesock,x-systemd.automount 0 0"
-  if grep -qF "${share_path} ${mount_point} cifs" /etc/fstab; then
-    log "INFO" "🧾 Azure Files fstab entry already present"
+    run_step "🔐 Install SMB credentials file" sudo install -m 600 "$tmp_creds" "$cred_file"
+    rm -f "$tmp_creds"
   else
-    run_step "🧾 Add Azure Files mount to fstab" sudo bash -lc "printf '%s\n' \"$fstab_entry\" >> /etc/fstab"
+    log "INFO" "🔐 SMB credentials file already exists: $cred_file"
   fi
 
   if mountpoint -q "$mount_point"; then
     log "INFO" "☁️ Azure Files share already mounted at $mount_point"
   else
-    run_step "☁️ Mount Azure Files share" sudo mount "$mount_point"
+    run_step "☁️ Mount Azure Files share" \
+      sudo mount -t cifs "//${storage_account}.file.core.windows.net/${file_share}" "$mount_point" \
+      -o "credentials=${cred_file},dir_mode=0755,file_mode=0755,serverino,nosharesock,mfsymlinks,actimeo=30,vers=3.0"
   fi
 }
 
