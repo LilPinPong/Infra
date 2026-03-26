@@ -17,7 +17,8 @@ resource pip 'Microsoft.Network/publicIPAddresses@2025-05-01' = {
       protectionMode: 'VirtualNetworkInherited'
     }
     dnsSettings: {
-      domainNameLabel: 'domain-${project_name}-${environment}-${version}'
+      domainNameLabel: 'lilpinpong'
     }
   }
 }
+ 
