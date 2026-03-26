@@ -100,8 +100,8 @@ mount_azure_files_share() {
   local tmp_path
 
   storage_account="${AZURE_STORAGE_ACCOUNT:-${AZURE_STORAGE_ACCOUNT_NAME:-${STORAGE_ACCOUNT_NAME:-${R_STORAGE_ACCOUNT_NAME:-}}}}"
-  storage_key="${AZURE_STORAGE_ACCESS_KEY:-${AZURE_STORAGE_KEY:-${AZURE_STORAGE_ACCOUNT_KEY:-${AZURE_STORAGE_ACCOUNT_PASSWORD:-${STORAGE_ACCOUNT_PASSWORD:-${R_STORAGE_ACCOUNT_PASSWORD:-}}}}}}"
-  container_name="${AZURE_BLOB_CONTAINER:-${AZURE_BLOB_CONTAINER_NAME:-${AZURE_STORAGE_ACCOUNT_CONTAINER:-${AZURE_STORAGE_CONTAINER_NAME:-${AZURE_FILE_SHARE:-${FILE_SHARE_NAME:-${R_FILE_SHARE_NAME:-share-azureinfra-dev-01}}}}}}}"
+  storage_key="${AZURE_STORAGE_ACCESS_KEY:-${AZURE_STORAGE_KEY:-${AZURE_STORAGE_ACCOUNT_KEY:-${AZURE_STORAGE_ACCOUNT_PASSWORD:-${STORAGE_ACCOUNT_PASSWORD:-${R_STORAGE_ACCOUNT_PASSWORD:-${R_STORAGE_PASSWORD:-}}}}}}}"
+  container_name="${AZURE_BLOB_CONTAINER:-${AZURE_BLOB_CONTAINER_NAME:-${AZURE_STORAGE_ACCOUNT_CONTAINER:-${AZURE_STORAGE_CONTAINER_NAME:-${R_STORAGE_CONTAINER:-${AZURE_FILE_SHARE:-${FILE_SHARE_NAME:-${R_FILE_SHARE_NAME:-share-azureinfra-dev-01}}}}}}}}"
   mount_point="${AZURE_MOUNT_POINT:-/media/${container_name}}"
   tmp_path="${AZURE_BLOBFUSE_TMP_PATH:-/mnt/blobfuse2tmp/${container_name}}"
 
@@ -138,7 +138,7 @@ sync_caddyfile_from_storage_or_create() {
   local storage_caddy_dir
   local temp_caddy_file
 
-  container_name="${AZURE_BLOB_CONTAINER:-${AZURE_BLOB_CONTAINER_NAME:-${AZURE_STORAGE_ACCOUNT_CONTAINER:-${AZURE_STORAGE_CONTAINER_NAME:-${AZURE_FILE_SHARE:-${FILE_SHARE_NAME:-${R_FILE_SHARE_NAME:-share-azureinfra-dev-01}}}}}}}"
+  container_name="${AZURE_BLOB_CONTAINER:-${AZURE_BLOB_CONTAINER_NAME:-${AZURE_STORAGE_ACCOUNT_CONTAINER:-${AZURE_STORAGE_CONTAINER_NAME:-${R_STORAGE_CONTAINER:-${AZURE_FILE_SHARE:-${FILE_SHARE_NAME:-${R_FILE_SHARE_NAME:-share-azureinfra-dev-01}}}}}}}}"
   mount_point="${AZURE_MOUNT_POINT:-/media/${container_name}}"
   storage_caddy_file="${AZURE_CADDYFILE_PATH:-${mount_point}/caddy/Caddyfile}"
   storage_caddy_dir="$(dirname "$storage_caddy_file")"

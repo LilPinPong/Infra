@@ -115,7 +115,10 @@ jobs:
                 fi
 
                 {
-                  echo "R_STORAGE_ACCOUNT_NAME=st${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }}"
+                  echo "AZURE_STORAGE_ACCOUNT=stvm${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }}"
+                  printf 'AZURE_STORAGE_ACCESS_KEY=%s\n' "$STORAGE_ACCOUNT_KEY"
+                  echo "AZURE_BLOB_CONTAINER=share-azureinfra-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                  echo "R_STORAGE_ACCOUNT_NAME=stvm${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }}"
                   printf 'R_STORAGE_PASSWORD=%s\n' "$STORAGE_ACCOUNT_KEY"
                   echo "R_STORAGE_CONTAINER=share-azureinfra-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
                   echo "N8N_SUBDOMAIN=n8n"
