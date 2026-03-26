@@ -80,8 +80,6 @@ mount_azure_files_share() {
     return 1
   fi
 
-  install_blobfuse2
-
   run_step "📁 Create blob mount directory" sudo mkdir -p "$mount_point"
   run_step "📁 Create blobfuse cache directory" sudo mkdir -p "$tmp_path"
   run_step "🔐 Set blobfuse cache ownership" sudo chown azureuser:azureuser "$tmp_path"
