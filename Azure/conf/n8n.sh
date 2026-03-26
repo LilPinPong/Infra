@@ -61,62 +61,85 @@ ensure_azureuser_docker_group() {
   fi
 }
 
+install_blobfuse2() {
+  local os_id
+  local os_version
+  local pkg_url
+  local pkg_file
+
+  if command -v blobfuse2 >/dev/null 2>&1; then
+    log "INFO" "☁️ blobfuse2 is already installed"
+    return 0
+  fi
+
+  if sudo apt-get install -y fuse3 blobfuse2 >>"$LOG_FILE" 2>&1; then
+    log "INFO" "☁️ blobfuse2 installed from existing apt repositories"
+    return 0
+  fi
+
+  run_step "📦 Install apt prerequisites for blobfuse2" sudo apt-get install -y ca-certificates curl wget gnupg lsb-release
+
+  os_id="$(. /etc/os-release && echo "${ID}")"
+  os_version="$(. /etc/os-release && echo "${VERSION_ID}")"
+  pkg_url="https://packages.microsoft.com/config/${os_id}/${os_version}/packages-microsoft-prod.deb"
+  pkg_file="/tmp/packages-microsoft-prod.deb"
+
+  run_step "⬇️ Download Microsoft Linux repo package" wget -qO "$pkg_file" "$pkg_url"
+  run_step "📦 Register Microsoft Linux repo" sudo dpkg -i "$pkg_file"
+  rm -f "$pkg_file"
+
+  run_step "🔄 Refresh apt index" sudo apt-get update -y
+  run_step "☁️ Install blobfuse2 package" sudo apt-get install -y fuse3 blobfuse2
+}
+
 mount_azure_files_share() {
   local storage_account
   local storage_key
-  local file_share
+  local container_name
   local mount_point
-  local cred_dir
-  local cred_file
-  local tmp_creds
+  local tmp_path
 
-  storage_account="${AZURE_STORAGE_ACCOUNT:-${R_STORAGE_ACCOUNT_NAME:-}}"
-  storage_key="${AZURE_STORAGE_KEY:-${R_STORAGE_ACCOUNT_PASSWORD:-}}"
-  file_share="${AZURE_FILE_SHARE:-${R_FILE_SHARE_NAME:-}}"
-  mount_point="${AZURE_MOUNT_POINT:-/media/${file_share}}"
+  storage_account="${AZURE_STORAGE_ACCOUNT:-${STORAGE_ACCOUNT_NAME:-${R_STORAGE_ACCOUNT_NAME:-}}}"
+  storage_key="${AZURE_STORAGE_ACCESS_KEY:-${AZURE_STORAGE_KEY:-${STORAGE_ACCOUNT_PASSWORD:-${R_STORAGE_ACCOUNT_PASSWORD:-}}}}"
+  container_name="${AZURE_BLOB_CONTAINER:-${AZURE_STORAGE_ACCOUNT_CONTAINER:-${AZURE_FILE_SHARE:-${FILE_SHARE_NAME:-${R_FILE_SHARE_NAME:-share-azureinfra-dev-01}}}}}"
+  mount_point="${AZURE_MOUNT_POINT:-/media/${container_name}}"
+  tmp_path="${AZURE_BLOBFUSE_TMP_PATH:-/mnt/blobfuse2tmp/${container_name}}"
 
-  if [ -z "$storage_account" ] || [ -z "$storage_key" ] || [ -z "$file_share" ]; then
-    log "ERROR" "🛑 Missing storage settings. Provide AZURE_* or R_* variables (account, key/password, share)."
+  if [ -z "$storage_account" ] || [ -z "$storage_key" ] || [ -z "$container_name" ]; then
+    log "ERROR" "🛑 Missing blob settings. Provide account, key and container (AZURE_* or R_* variables)."
     return 1
   fi
 
-  cred_dir="/etc/smbcredentials"
-  cred_file="${cred_dir}/${storage_account}.cred"
+  install_blobfuse2
 
-  run_step "📦 Install cifs-utils" sudo apt-get install -y cifs-utils
-  run_step "📁 Create mount directory" sudo mkdir -p "$mount_point"
-  run_step "📁 Create smb credentials directory" sudo mkdir -p "$cred_dir"
-
-  if [ ! -f "$cred_file" ]; then
-    tmp_creds="$(mktemp)"
-    chmod 600 "$tmp_creds"
-    cat >"$tmp_creds" <<EOF
-username=${storage_account}
-password=${storage_key}
-EOF
-    run_step "🔐 Install SMB credentials file" sudo install -m 600 "$tmp_creds" "$cred_file"
-    rm -f "$tmp_creds"
-  else
-    log "INFO" "🔐 SMB credentials file already exists: $cred_file"
-  fi
+  run_step "📁 Create blob mount directory" sudo mkdir -p "$mount_point"
+  run_step "📁 Create blobfuse cache directory" sudo mkdir -p "$tmp_path"
+  run_step "🔐 Set blobfuse cache ownership" sudo chown azureuser:azureuser "$tmp_path"
+  run_step "🔐 Set blobfuse cache permissions" sudo chmod 700 "$tmp_path"
 
   if mountpoint -q "$mount_point"; then
-    log "INFO" "☁️ Azure Files share already mounted at $mount_point"
+    log "INFO" "☁️ Blob container already mounted at $mount_point"
   else
-    run_step "☁️ Mount Azure Files share" \
-      sudo mount -t cifs "//${storage_account}.file.core.windows.net/${file_share}" "$mount_point" \
-      -o "credentials=${cred_file},dir_mode=0755,file_mode=0755,serverino,nosharesock,mfsymlinks,actimeo=30,vers=3.0"
+    run_step "☁️ Mount Blob container with blobfuse2" \
+      sudo env \
+      AZURE_STORAGE_ACCOUNT="$storage_account" \
+      AZURE_STORAGE_AUTH_TYPE="Key" \
+      AZURE_STORAGE_ACCESS_KEY="$storage_key" \
+      AZURE_STORAGE_ACCOUNT_CONTAINER="$container_name" \
+      blobfuse2 mount "$mount_point" --tmp-path="$tmp_path"
   fi
 }
 
 sync_caddyfile_from_storage_or_create() {
   local caddy_file="$1"
   local mount_point
+  local container_name
   local storage_caddy_file
   local storage_caddy_dir
   local temp_caddy_file
 
-  mount_point="${AZURE_MOUNT_POINT:-/mnt/azurefiles}"
+  container_name="${AZURE_BLOB_CONTAINER:-${AZURE_STORAGE_ACCOUNT_CONTAINER:-${AZURE_FILE_SHARE:-${FILE_SHARE_NAME:-${R_FILE_SHARE_NAME:-share-azureinfra-dev-01}}}}}"
+  mount_point="${AZURE_MOUNT_POINT:-/media/${container_name}}"
   storage_caddy_file="${AZURE_CADDYFILE_PATH:-${mount_point}/caddy/Caddyfile}"
   storage_caddy_dir="$(dirname "$storage_caddy_file")"
   temp_caddy_file="$(mktemp)"
