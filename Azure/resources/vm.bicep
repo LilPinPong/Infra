@@ -3,10 +3,7 @@ param environment string
 param version string
 
 param adminUsername string = 'azureuser'
-
-resource sshKey 'Microsoft.Compute/sshPublicKeys@2025-04-01' existing = {
-  name: 'ssh-${project_name}-${environment}-${version}'
-}
+param adminPublicKey string
 
 resource vm 'Microsoft.Compute/virtualMachines@2024-11-01' = {
   name: 'vm-${project_name}-${environment}-${version}'
@@ -51,7 +48,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-11-01' = {
           publicKeys: [
             {
               path: '/home/${adminUsername}/.ssh/authorized_keys'
-              keyData: sshKey.properties.publicKey
+              keyData: adminPublicKey
             }
           ]
         }
