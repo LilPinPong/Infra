@@ -154,12 +154,15 @@ EOF
     return 1
   fi
 
+  log "INFO" "🔎 Caddy storage target path: $storage_caddy_file"
+
   if [ -f "$storage_caddy_file" ]; then
     log "INFO" "☁️ Caddyfile found in Storage Account, copying to VM"
     run_step "📥 Copy Caddyfile from storage" sudo install -m 644 "$storage_caddy_file" "$caddy_file"
   else
     log "INFO" "☁️ Caddyfile not found in Storage Account, creating it in the container then copying to VM"
     run_step "📤 Create Caddyfile in storage container" sudo install -m 644 "$temp_caddy_file" "$storage_caddy_file"
+    run_step "🔄 Flush blobfuse writes" sync
     run_step "📥 Copy Caddyfile from storage to VM" sudo install -m 644 "$storage_caddy_file" "$caddy_file"
   fi
 
