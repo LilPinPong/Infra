@@ -129,14 +129,14 @@ start_n8n_stack() {
   fi
 
   cat >"$compose_output" <<EOF
-${N8N_SUBDOMAIN}.${DOMAIN} {
+${DOMAIN} {
     reverse_proxy n8n:5678
 }
 EOF
   run_step "🧱 Build Caddyfile" sudo cp "$compose_output" "$caddy_file"
   run_step "🔐 Ensure Caddyfile ownership" sudo chown azureuser:azureuser "$caddy_file"
   run_step "🔐 Ensure Caddyfile permissions" sudo chmod 644 "$caddy_file"
-  log "INFO" "🔍 Caddyfile generated for ${N8N_SUBDOMAIN}.${DOMAIN}"
+  log "INFO" "🔍 Caddyfile generated for ${DOMAIN}"
   rm -f "$compose_output"
   compose_output="$(mktemp)"
   log "INFO" "🔍 Compose asset permissions:"
