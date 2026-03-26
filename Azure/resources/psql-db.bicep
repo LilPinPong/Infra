@@ -45,3 +45,12 @@ resource psql 'Microsoft.DBforPostgreSQL/flexibleServers@2025-08-01' = {
     }
   }
 }
+
+
+resource database 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2025-08-01' = {
+  name: 'psql_${project_name}'
+  properties: {
+    charset: 'UTF8'
+    collation: 'en_US.utf8'
+  }
+}

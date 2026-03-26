@@ -114,7 +114,7 @@ jobs:
                   echo "DOMAIN=lilpinpong.canadacentral.cloudapp.azure.com"
                   printf 'ENCRYPTION_KEY=%s\n' "$N8N_ENCRYPTION_KEY"
                   echo "TZ=America/Toronto"
-                  echo "DB_NAME=PSQL_N8N"
+                  echo "DB_NAME=psql_${{ env.PROJECT_NAME }}"
                   echo "DB_PORT=5432"
                   echo "DB_HOST=psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}.postgres.database.azure.com"
                   echo "DB_USER=psqladmin"
