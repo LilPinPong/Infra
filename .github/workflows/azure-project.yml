@@ -115,9 +115,9 @@ jobs:
                 fi
 
                 {
-                  echo "STORAGE_ACCOUNT_NAME=st${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }}"
-                  printf 'STORAGE_PASSWORD=%s\n' "$STORAGE_ACCOUNT_KEY"
-                  echo "STORAGE_CONTAINER=share-azureinfra-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                  echo "R_STORAGE_ACCOUNT_NAME=st${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }}"
+                  printf 'R_STORAGE_PASSWORD=%s\n' "$STORAGE_ACCOUNT_KEY"
+                  echo "R_STORAGE_CONTAINER=share-azureinfra-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
                   echo "N8N_SUBDOMAIN=n8n"
                   echo "DOMAIN=lilpinpong.canadacentral.cloudapp.azure.com"
                   printf 'ENCRYPTION_KEY=%s\n' "$N8N_ENCRYPTION_KEY"
