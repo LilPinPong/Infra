@@ -64,10 +64,16 @@ jobs:
               if: always()
               uses: actions/upload-artifact@v4
               with:
-                  name: infra-build-${{ github.run_id }}
-                  path: |
-                      ./Azure/resources/compiled
-                      ${{ runner.temp }}/infra-build.log
+                  name: infra-compiled-${{ github.run_id }}
+                  path: ./Azure/resources/compiled
+                  if-no-files-found: error
+
+            - name: Upload build log artifact
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: infra-build-log-${{ github.run_id }}
+                  path: ${{ runner.temp }}/infra-build.log
                   if-no-files-found: warn
 
     rg:
@@ -165,8 +171,28 @@ jobs:
             - name: Download build artifact
               uses: actions/download-artifact@v4
               with:
-                  name: infra-build-${{ github.run_id }}
-                  path: ./
+                  name: infra-compiled-${{ github.run_id }}
+                  path: ./_artifacts/infra-compiled
+
+            - name: Normalize compiled templates path
+              run: |
+                  set -euo pipefail
+                  mkdir -p ./Azure/resources/compiled
+
+                  if [ -d ./_artifacts/infra-compiled/Azure/resources/compiled ]; then
+                    cp -a ./_artifacts/infra-compiled/Azure/resources/compiled/. ./Azure/resources/compiled/
+                  elif [ -d ./_artifacts/infra-compiled/compiled ]; then
+                    cp -a ./_artifacts/infra-compiled/compiled/. ./Azure/resources/compiled/
+                  else
+                    cp -a ./_artifacts/infra-compiled/. ./Azure/resources/compiled/
+                  fi
+
+                  if ! find ./Azure/resources/compiled -maxdepth 1 -type f -name '*.json' | grep -q .; then
+                    echo "::error::No compiled ARM templates found in ./Azure/resources/compiled"
+                    echo "Downloaded artifact tree:"
+                    find ./_artifacts -maxdepth 5 -print
+                    exit 1
+                  fi
 
             - name: Checkov Scan (ARM compiled)
               uses: bridgecrewio/checkov-action@v12
