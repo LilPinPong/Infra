@@ -1,6 +1,7 @@
 param project_name string
 param environment string
 param version string
+param allowedHttpSourcePrefix string = '184.160.139.84'
 
 resource vnet 'Microsoft.Network/virtualNetworks@2023-11-01' existing = {
   name: 'vnet-${resourceGroup().location}-${environment}-${version}'
@@ -38,11 +39,11 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2023-11-01' = {
           protocol: 'Tcp'
           access: 'Allow'
           direction: 'Inbound'
-          sourceAddressPrefix: '*'
+          sourceAddressPrefix: allowedHttpSourcePrefix
           sourcePortRange: '*'
           destinationAddressPrefix: '*'
           destinationPortRange: '80'
-          description: 'Allow HTTP traffic from any source to any destination on port 80'
+          description: 'Allow HTTP traffic from trusted source on port 80'
         }
       }
       {

@@ -33,7 +33,7 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = if (createKv) {
       family: 'A'
       name: skuName
     }
-    publicNetworkAccess:'Enabled'
+    publicNetworkAccess: 'Disabled'
     tenantId: subscription().tenantId
     enableSoftDelete: true
     enablePurgeProtection: true
@@ -43,6 +43,8 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = if (createKv) {
     networkAcls: {
       bypass: 'AzureServices'
       defaultAction: 'Deny'
+      ipRules: []
+      virtualNetworkRules: []
     }
     accessPolicies: [
       {

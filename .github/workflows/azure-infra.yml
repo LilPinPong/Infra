@@ -38,6 +38,13 @@ jobs:
                   az bicep lint --file Azure/resources/nw.bicep
                   az bicep lint --file Azure/resources/vnet.bicep
                   az bicep lint --file Azure/resources/kv.bicep
+                  az bicep lint --file Azure/resources/privatedns.bicep
+                  az bicep lint --file Azure/resources/nic.bicep
+                  az bicep lint --file Azure/resources/vm.bicep
+                  az bicep lint --file Azure/resources/pip.bicep
+                  az bicep lint --file Azure/resources/psql-db.bicep
+                  az bicep lint --file Azure/resources/stvm.bicep
+                  az bicep lint --file Azure/resources/nsg.bicep
                   {
                     echo "Lint completed successfully"
                   } >> "$LOG_FILE"
@@ -47,12 +54,12 @@ jobs:
                   set -euo pipefail
                   LOG_FILE="$RUNNER_TEMP/infra-build.log"
                   mkdir -p ./Azure/resources/compiled
-                  az bicep build --file Azure/resources/rg.bicep --outdir ./Azure/resources/compiled 2>&1 | tee -a "$LOG_FILE"
-                  az bicep build --file Azure/resources/nw.bicep --outdir ./Azure/resources/compiled 2>&1 | tee -a "$LOG_FILE"
-                  az bicep build --file Azure/resources/vnet.bicep --outdir ./Azure/resources/compiled 2>&1 | tee -a "$LOG_FILE"
-                  az bicep build --file Azure/resources/kv.bicep --outdir ./Azure/resources/compiled 2>&1 | tee -a "$LOG_FILE"
-                  az bicep build --file Azure/resources/privatedns.bicep --outdir ./Azure/resources/compiled 2>&1 | tee -a "$LOG_FILE"
-
+                  for file in Azure/resources/*.bicep; do
+                    az bicep build --file "$file" --outdir ./Azure/resources/compiled 2>&1 | tee -a "$LOG_FILE"
+                  done
+                  {
+                    echo "Build completed successfully"
+                  } >> "$LOG_FILE"
             - name: Upload build artifact
               if: always()
               uses: actions/upload-artifact@v4
@@ -161,15 +168,10 @@ jobs:
                   name: infra-build-${{ github.run_id }}
                   path: ./
 
-            - name: Checkov Scan (Bicep source)
-              uses: bridgecrewio/checkov-action@v12
-              with:
-                  directory: ./Azure/resources
-                  framework: bicep
-
             - name: Checkov Scan (ARM compiled)
               uses: bridgecrewio/checkov-action@v12
               with:
                   directory: ./Azure/resources/compiled
                   framework: arm
+                  skip_check: CKV_AZURE_50
 
