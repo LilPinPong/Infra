@@ -22,7 +22,7 @@ env:
     LOCATION: ${{vars.LOCATION}}
 
 jobs:
-    create_artifact:
+    build:
         runs-on: ubuntu-latest
         environment: test
         steps:
@@ -31,27 +31,39 @@ jobs:
 
             - name: Lint Bicep
               run: |
+                  set -euo pipefail
+                  LOG_FILE="$RUNNER_TEMP/infra-build.log"
+                  : > "$LOG_FILE"
                   az bicep lint --file Azure/resources/rg.bicep
                   az bicep lint --file Azure/resources/nw.bicep
                   az bicep lint --file Azure/resources/vnet.bicep
                   az bicep lint --file Azure/resources/kv.bicep
+                  {
+                    echo "Lint completed successfully"
+                  } >> "$LOG_FILE"
 
             - name: Bicep Build
               run: |
+                  set -euo pipefail
+                  LOG_FILE="$RUNNER_TEMP/infra-build.log"
                   mkdir -p ./Azure/resources/compiled
-                  az bicep build --file Azure/resources/rg.bicep --outdir ./Azure/resources/compiled
-                  az bicep build --file Azure/resources/nw.bicep --outdir ./Azure/resources/compiled
-                  az bicep build --file Azure/resources/vnet.bicep --outdir ./Azure/resources/compiled
-                  az bicep build --file Azure/resources/kv.bicep --outdir ./Azure/resources/compiled
+                  az bicep build --file Azure/resources/rg.bicep --outdir ./Azure/resources/compiled 2>&1 | tee -a "$LOG_FILE"
+                  az bicep build --file Azure/resources/nw.bicep --outdir ./Azure/resources/compiled 2>&1 | tee -a "$LOG_FILE"
+                  az bicep build --file Azure/resources/vnet.bicep --outdir ./Azure/resources/compiled 2>&1 | tee -a "$LOG_FILE"
+                  az bicep build --file Azure/resources/kv.bicep --outdir ./Azure/resources/compiled 2>&1 | tee -a "$LOG_FILE"
+                  az bicep build --file Azure/resources/privatedns.bicep --outdir ./Azure/resources/compiled 2>&1 | tee -a "$LOG_FILE"
 
-            - name: Upload artifact
+            - name: Upload build artifact
+              if: always()
               uses: actions/upload-artifact@v4
               with:
-                  name: artifact-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}
-                  path: ./Azure/
+                  name: infra-build-${{ github.run_id }}
+                  path: |
+                      ./Azure/resources/compiled
+                      ${{ runner.temp }}/infra-build.log
+                  if-no-files-found: warn
 
-    create_rg:
-        needs: create_artifact
+    rg:
         environment: test
         runs-on: ubuntu-latest
         steps:
@@ -65,17 +77,29 @@ jobs:
 
             - name: Deploy Resource Group
               run: |
-                  az deployment sub create --name 'rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
-                  az deployment sub create --name 'rg-privatedns-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
-                  az deployment sub create --name 'rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
-                  az deployment sub create --name 'rg-database-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 
+                  set -euo pipefail
+                  LOG_FILE="$RUNNER_TEMP/infra-rg.log"
+                  az deployment sub create --name 'rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 2>&1 | tee -a "$LOG_FILE"
+                  az deployment sub create --name 'rg-privatedns-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 2>&1 | tee -a "$LOG_FILE"
+                  az deployment sub create --name 'rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 2>&1 | tee -a "$LOG_FILE"
+                  az deployment sub create --name 'rg-database-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}' --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep 2>&1 | tee -a "$LOG_FILE"
 
             - name: Logout of Azure
               run: |
                   az logout
+
+            - name: Upload rg artifact
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: infra-rg-${{ github.run_id }}
+                  path: ${{ runner.temp }}/infra-rg.log
+                  if-no-files-found: warn
     
-    deploy_resources:
-        needs: create_rg
+    deploy:
+        needs:
+            - rg
+            - checkov_scan
         environment: test
         runs-on: ubuntu-latest
         steps:
@@ -91,6 +115,7 @@ jobs:
               id: check_kv
               shell: bash
               run: |
+                set -euo pipefail
                 KV_NAME="kv-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
                 RG_NAME="rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
 
@@ -102,36 +127,49 @@ jobs:
                 
             - name: Deploy Resources
               run: |
-                az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nw.bicep    
-                az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vnet.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-                az deployment group create --resource-group rg-privatedns-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/privatedns.bicep --parameters environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-                az deployment group create --resource-group rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/kv.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} objectId=${{ secrets.AZURE_GITHUB_OBJECT_ID }} createKv=${{ steps.check_kv.outputs.create_kv }} 
+                set -euo pipefail
+                LOG_FILE="$RUNNER_TEMP/infra-deploy.log"
+                az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nw.bicep 2>&1 | tee -a "$LOG_FILE"
+                az deployment group create --resource-group rg-network-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/vnet.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 2>&1 | tee -a "$LOG_FILE"
+                az deployment group create --resource-group rg-privatedns-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/privatedns.bicep --parameters environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 2>&1 | tee -a "$LOG_FILE"
+                az deployment group create --resource-group rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/kv.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} objectId=${{ secrets.AZURE_GITHUB_OBJECT_ID }} createKv=${{ steps.check_kv.outputs.create_kv }} 2>&1 | tee -a "$LOG_FILE"
              
            
             - name: Logout of Azure 
               run: |
                   az logout              
 
-    
-    # checkov_scan:
-    #     needs: create_artifact
-    #     environment: test
-    #     runs-on: ubuntu-latest
-    #     steps:
-    #         - name: Download artifact
-    #           uses: actions/download-artifact@v4
-    #           with:
-    #               name: artifact-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}
-    #               path: ./Azure/
+            - name: Upload deploy artifact
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: infra-deploy-${{ github.run_id }}
+                  path: ${{ runner.temp }}/infra-deploy.log
+                  if-no-files-found: warn
 
-    #         - name: Checkov Scan (Bicep source)
-    #           uses: bridgecrewio/checkov-action@v12
-    #           with:
-    #               directory: ./Azure/
-    #               framework: bicep
+    checkov_scan:
+        needs: build
+        environment: test
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-    #         - name: Checkov Scan (ARM compiled)
-    #           uses: bridgecrewio/checkov-action@v12
-    #           with:
-    #               directory: ./Azure/resources/compiled
-    #               framework: arm
+            - name: Download build artifact
+              uses: actions/download-artifact@v4
+              with:
+                  name: infra-build-${{ github.run_id }}
+                  path: ./
+
+            - name: Checkov Scan (Bicep source)
+              uses: bridgecrewio/checkov-action@v12
+              with:
+                  directory: ./Azure/resources
+                  framework: bicep
+
+            - name: Checkov Scan (ARM compiled)
+              uses: bridgecrewio/checkov-action@v12
+              with:
+                  directory: ./Azure/resources/compiled
+                  framework: arm
+

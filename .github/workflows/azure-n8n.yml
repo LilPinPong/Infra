@@ -1,0 +1,160 @@
+# name: Azure n8n Deployment
+
+# on:
+#     workflow_dispatch:
+#     workflow_run:
+#         workflows: ["Azure Project Deployment"]
+#         types:
+#             - completed
+    
+# env:
+#     AZURE_CREDENTIALS: '{"clientId": "${{secrets.AZURE_CLIENT_ID}}", "clientSecret": "${{secrets.AZURE_CLIENT_SECRET}}", "subscriptionId": "${{secrets.AZURE_SUBSCRIPTION_ID}}", "tenantId": "${{secrets.AZURE_TENANT_ID}}"}'
+#     AZURE_ENV: ${{vars.AZURE_ENV}}
+#     PROJECT_NAME: ${{vars.PROJECT_NAME}}
+#     PROJECT_VERSION: ${{vars.PROJECT_VERSION}}
+#     LOCATION: ${{vars.LOCATION}}
+
+# jobs:
+#     n8n:
+#         runs-on: ubuntu-latest
+#         environment: test
+#         steps:
+#             - name: Copy compose.yml and .env to VM
+#               env:
+#                 AZURE_DB_PASSWORD: ${{ secrets.AZURE_DB_PASSWORD }}
+#                 N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+#               run: |
+#                 set -euo pipefail
+#                 LOG_FILE="$RUNNER_TEMP/n8n-deploy.log"
+#                 : > "$LOG_FILE"
+#                 exec > >(tee -a "$LOG_FILE") 2>&1
+#                 STORAGE_ACCOUNT_KEY="$(az storage account keys list --resource-group rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --account-name stvm${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }} --query "[0].value" -o tsv)"
+#                 VM_NAME="vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+#                 VM_RG="rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+#                 REMOTE_DIR="/home/azureuser/n8n"
+
+#                 COMPOSE_B64="$(base64 -w0 "$GITHUB_WORKSPACE/Azure/conf/compose.yml")"
+
+#                 if [ -z "${N8N_ENCRYPTION_KEY:-}" ]; then
+#                   echo "::error::Missing secret N8N_ENCRYPTION_KEY"
+#                   exit 1
+#                 fi
+
+#                 {
+#                   echo "AZURE_STORAGE_ACCOUNT=stvm${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }}"
+#                   printf 'AZURE_STORAGE_ACCESS_KEY=%s\n' "$STORAGE_ACCOUNT_KEY"
+#                   echo "AZURE_BLOB_CONTAINER=share-azureinfra-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+#                   echo "R_STORAGE_ACCOUNT_NAME=stvm${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }}"
+#                   printf 'R_STORAGE_PASSWORD=%s\n' "$STORAGE_ACCOUNT_KEY"
+#                   echo "R_STORAGE_CONTAINER=share-azureinfra-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+#                   echo "N8N_SUBDOMAIN=n8n"
+#                   echo "DOMAIN=lilpinpong.canadacentral.cloudapp.azure.com"
+#                   printf 'ENCRYPTION_KEY=%s\n' "$N8N_ENCRYPTION_KEY"
+#                   echo "TZ=America/Toronto"
+#                   echo "DB_NAME=psql_${{ env.PROJECT_NAME }}"
+#                   echo "DB_PORT=5432"
+#                   echo "DB_HOST=psql-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}.postgres.database.azure.com"
+#                   echo "DB_USER=psqladmin"
+#                   echo "DB_SSL=true"
+#                   echo "DB_SSL_REJECT_UNAUTHORIZED=false"
+#                   printf 'DB_PASSWORD=%s\n' "${{ secrets.AZURE_DB_PASSWORD }}"
+#                 } >"$RUNNER_TEMP/n8n.env"
+#                 ENV_B64="$(base64 -w0 "$RUNNER_TEMP/n8n.env")"
+
+#                 if [ ! -s "$GITHUB_WORKSPACE/Azure/conf/compose.yml" ]; then
+#                   echo "::error::Local compose.yml is missing or empty"
+#                   exit 1
+#                 fi
+#                 if [ ! -s "$RUNNER_TEMP/n8n.env" ]; then
+#                   echo "::error::Generated .env is empty"
+#                   exit 1
+#                 fi
+
+#                 az vm run-command invoke \
+#                   --command-id RunShellScript \
+#                   --name "$VM_NAME" \
+#                   --resource-group "$VM_RG" \
+#                   --scripts "set -euo pipefail
+#                     REMOTE_DIR='$REMOTE_DIR'
+#                     sudo mkdir -p \"\$REMOTE_DIR\"
+#                     printf '%s' '$COMPOSE_B64' | base64 -d | sudo tee \"\$REMOTE_DIR/compose.yml\" >/dev/null
+#                     printf '%s' '$ENV_B64' | base64 -d | sudo tee \"\$REMOTE_DIR/.env\" >/dev/null
+#                     sudo chown -R azureuser:azureuser \"\$REMOTE_DIR\"
+#                     sudo chmod 644 \"\$REMOTE_DIR/compose.yml\"
+#                     sudo chmod 640 \"\$REMOTE_DIR/.env\"
+#                     if [ ! -s \"\$REMOTE_DIR/compose.yml\" ]; then
+#                       echo 'ERROR: compose.yml is empty after copy' >&2
+#                       exit 1
+#                     fi
+#                     if [ ! -s \"\$REMOTE_DIR/.env\" ]; then
+#                       echo 'ERROR: .env is empty after copy' >&2
+#                       exit 1
+#                     fi
+#                     ls -la \"\$REMOTE_DIR\"
+#                     wc -c \"\$REMOTE_DIR/compose.yml\" \"\$REMOTE_DIR/.env\"
+#                   " \
+#                   --query "value[0].message" \
+#                   --output tsv | tee "$RUNNER_TEMP/copy-compose.log"
+
+#                 COMPOSE_SIZE="$(awk '/\/compose\.yml$/ {print $1; exit}' "$RUNNER_TEMP/copy-compose.log")"
+#                 ENV_SIZE="$(awk '/\/\.env$/ {print $1; exit}' "$RUNNER_TEMP/copy-compose.log")"
+
+#                 if [ -z "${COMPOSE_SIZE:-}" ] || [ -z "${ENV_SIZE:-}" ]; then
+#                   echo "::error::Unable to read remote file sizes from copy step output."
+#                   cat "$RUNNER_TEMP/copy-compose.log"
+#                   exit 1
+#                 fi
+
+#                 if [ "$COMPOSE_SIZE" -eq 0 ] || [ "$ENV_SIZE" -eq 0 ]; then
+#                   echo "::error::Remote files are empty after copy (compose.yml=$COMPOSE_SIZE, .env=$ENV_SIZE)."
+#                   cat "$RUNNER_TEMP/copy-compose.log"
+#                   exit 1
+#                 fi
+
+#             - name: Run n8n bootstrap on VM
+#               run: |
+#                 set -euo pipefail
+#                 az vm run-command invoke \
+#                   --command-id RunShellScript \
+#                   --name "vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}" \
+#                   --resource-group "rg-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}" \
+#                   --scripts @"$GITHUB_WORKSPACE/Azure/conf/n8n.sh" \
+#                   --parameters /home/azureuser/n8n \
+#                   --query "value[0].message" \
+#                   --output tsv | tee "$RUNNER_TEMP/n8n-bootstrap.log"
+
+#             - name: Prepare n8n outputs bundle
+#               if: always()
+#               run: |
+#                 set -euo pipefail
+#                 ARTIFACT_DIR="$RUNNER_TEMP/n8n-workflow-output"
+#                 mkdir -p "$ARTIFACT_DIR"
+
+#                 [ -f "$RUNNER_TEMP/n8n-deploy.log" ] && cp "$RUNNER_TEMP/n8n-deploy.log" "$ARTIFACT_DIR/" || true
+#                 [ -f "$RUNNER_TEMP/copy-compose.log" ] && cp "$RUNNER_TEMP/copy-compose.log" "$ARTIFACT_DIR/" || true
+#                 [ -f "$RUNNER_TEMP/n8n-bootstrap.log" ] && cp "$RUNNER_TEMP/n8n-bootstrap.log" "$ARTIFACT_DIR/" || true
+
+#                 if [ -f "$RUNNER_TEMP/n8n.env" ]; then
+#                   sed -E 's/^(AZURE_STORAGE_ACCESS_KEY|R_STORAGE_PASSWORD|ENCRYPTION_KEY|DB_PASSWORD)=.*/\1=***REDACTED***/' "$RUNNER_TEMP/n8n.env" > "$ARTIFACT_DIR/n8n.env.redacted"
+#                 fi
+
+#                 {
+#                   echo "project_name=${{ env.PROJECT_NAME }}"
+#                   echo "environment=${{ env.AZURE_ENV }}"
+#                   echo "version=${{ env.PROJECT_VERSION }}"
+#                   echo "vm_name=vm-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+#                   echo "workflow_run_id=${{ github.run_id }}"
+#                 } > "$ARTIFACT_DIR/deployment-summary.txt"
+
+#             - name: Upload n8n artifact
+#               if: always()
+#               uses: actions/upload-artifact@v4
+#               with:
+#                 name: n8n-deploy-${{ github.run_id }}
+#                 path: ${{ runner.temp }}/n8n-workflow-output
+#                 if-no-files-found: warn
+
+#             - name : Logout of Azure
+#               run: |
+#                   az logout
+                   
