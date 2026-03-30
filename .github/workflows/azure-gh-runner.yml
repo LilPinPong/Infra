@@ -90,7 +90,7 @@ jobs:
       - name: Register and start GitHub Actions runner service
         shell: bash
         env:
-          GH_RUNNER_PAT: "admin:org"
+          GH_RUNNER_PAT: ${{ secrets.GH_RUNNER_PAT }}
         run: |
           set -euo pipefail
 
@@ -98,7 +98,13 @@ jobs:
           RUNNER_VERSION="2.327.1"
           RUNNER_RG="rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
           RUNNER_VM_NAME="vm-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
-          GH_REPO_URL="https://github.com/LilPinPong/Infra"
+          GH_REPO_SLUG="${GITHUB_REPOSITORY}"
+          GH_REPO_URL="https://github.com/${GH_REPO_SLUG}"
+
+          if [ -z "${GH_RUNNER_PAT:-}" ]; then
+            echo "::error::Missing secret GH_RUNNER_PAT."
+            exit 1
+          fi
 
           if ! command -v jq >/dev/null 2>&1; then
             sudo apt-get update
@@ -109,7 +115,7 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${GH_RUNNER_PAT}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${GH_REPO_URL}/actions/runners/registration-token" \
+            "https://api.github.com/repos/${GH_REPO_SLUG}/actions/runners/registration-token" \
             | jq -r '.token')"
 
           if [ -z "${RUNNER_TOKEN}" ] || [ "${RUNNER_TOKEN}" = "null" ]; then
