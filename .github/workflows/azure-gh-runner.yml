@@ -42,16 +42,16 @@ jobs:
         with:
           creds: ${{ env.AZURE_CREDENTIALS }}
 
-      - name: Create runner VM in VNet subnet
-        shell: bash
-        run: |
-          set -euo pipefail
+      # - name: Create runner VM in VNet subnet
+      #   shell: bash
+      #   run: |
+      #     set -euo pipefail
 
-          az deployment sub create --name rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep
-          az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nsg.bicep --parameters project_name=runner environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
-          az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/pip.bicep --parameters project_name=runner environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-          az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nic.bicep --parameters project_name=runner environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-          az vm create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name vm-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --nics "nic-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}" --image "Ubuntu2204" --size "Standard_B2ats_v2" --admin-username "githubrunner" --authentication-type "ssh" --generate-ssh-keys --assign-identity --output none
+      #     az deployment sub create --name rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep
+      #     az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nsg.bicep --parameters project_name=runner environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
+      #     az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/pip.bicep --parameters project_name=runner environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+      #     az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nic.bicep --parameters project_name=runner environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+      #     az vm create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name vm-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --nics "nic-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}" --image "Ubuntu2204" --size "Standard_B2ats_v2" --admin-username "githubrunner" --authentication-type "ssh" --generate-ssh-keys --assign-identity --output none
 
 
       - name: Assign KV permissions to runner managed identity
@@ -66,7 +66,7 @@ jobs:
           echo "Runner principal: ${RUNNER_PRINCIPAL_ID}"
           echo "KV scope: ${KV_ID}"
 
-          for ROLE_NAME in "User Access Administrator" "Key Vault Secrets Officer" "Key Vault Secrets User"; do
+          for ROLE_NAME in "Key Vault Secrets Officer" "Key Vault Secrets User"; do
             EXISTING_COUNT="$(az role assignment list \
               --assignee-object-id "${RUNNER_PRINCIPAL_ID}" \
               --scope "${KV_ID}" \
