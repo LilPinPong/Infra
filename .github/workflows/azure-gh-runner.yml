@@ -35,11 +35,19 @@ jobs:
         run: |
           set -euo pipefail
 
-          az deployment sub create --name rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep
-          az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nsg.bicep --parameters project_name=runner environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
-          az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/pip.bicep --parameters project_name=runner environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-          az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nic.bicep --parameters project_name=runner environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-          az vm create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name vm-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --nics "nic-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}" --image "Ubuntu2204" --size "Standard_B2ats_v2" --admin-username "githubrunner" --authentication-type "ssh" --generate-ssh-keys --assign-identity --output none
+          RUNNER_RG="rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+          RUNNER_VM_NAME="vm-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+
+          az deployment sub create --name "$RUNNER_RG" --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep
+          az deployment group create --resource-group "$RUNNER_RG" --template-file ./Azure/resources/nsg.bicep --parameters project_name=runner environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
+          az deployment group create --resource-group "$RUNNER_RG" --template-file ./Azure/resources/pip.bicep --parameters project_name=runner environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+          az deployment group create --resource-group "$RUNNER_RG" --template-file ./Azure/resources/nic.bicep --parameters project_name=runner environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+
+          if az vm show --resource-group "$RUNNER_RG" --name "$RUNNER_VM_NAME" --output none 2>/dev/null; then
+            echo "Runner VM already exists, skipping create to avoid immutable SSH key update."
+          else
+            az vm create --resource-group "$RUNNER_RG" --name "$RUNNER_VM_NAME" --nics "nic-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}" --image "Ubuntu2204" --size "Standard_B2ats_v2" --admin-username "githubrunner" --authentication-type "ssh" --generate-ssh-keys --assign-identity --output none
+          fi
 
 
       - name: Assign KV permissions to runner managed identity
