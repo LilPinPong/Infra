@@ -6,6 +6,23 @@ param adminUsername string = 'azureuser'
 param adminPublicKey string
 param enableEncryptionAtHost bool = false
 
+var vmSecurityProfile = enableEncryptionAtHost
+  ? {
+      securityType: 'TrustedLaunch'
+      encryptionAtHost: true
+      uefiSettings: {
+        secureBootEnabled: true
+        vTpmEnabled: true
+      }
+    }
+  : {
+      securityType: 'TrustedLaunch'
+      uefiSettings: {
+        secureBootEnabled: true
+        vTpmEnabled: true
+      }
+    }
+
 resource vm 'Microsoft.Compute/virtualMachines@2024-11-01' = {
   name: 'vm-${project_name}-${environment}-${version}'
   location: resourceGroup().location
@@ -57,14 +74,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-11-01' = {
       secrets: []
       allowExtensionOperations: true
     }
-    securityProfile: {
-      securityType: 'TrustedLaunch'
-      encryptionAtHost: enableEncryptionAtHost
-      uefiSettings: {
-        secureBootEnabled: true
-        vTpmEnabled: true
-      }
-    }
+    securityProfile: vmSecurityProfile
     networkProfile: {
       networkInterfaces: [
         {
