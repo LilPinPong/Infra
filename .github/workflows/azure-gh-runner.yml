@@ -32,9 +32,9 @@ jobs:
           set -euo pipefail
 
           az deployment group create --name rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
-          az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nsg.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
-          az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/pip.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
-          az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nic.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+          az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nsg.bicep --parameters project_name=runner environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
+          az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/pip.bicep --parameters project_name=runner environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+          az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nic.bicep --parameters project_name=runner environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
           az vm create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name vm-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --nics "nic-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}" --image "Ubuntu2204" --size "Standard_B2s" --admin-username "githubrunner" --authentication-type "ssh" --generate-ssh-keys --assign-identity --output none
 
 
