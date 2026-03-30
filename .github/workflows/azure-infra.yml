@@ -81,6 +81,7 @@ jobs:
                   if-no-files-found: warn
 
     rg:
+        needs: build
         environment: test
         runs-on: ubuntu-latest
         steps:
