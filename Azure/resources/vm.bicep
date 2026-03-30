@@ -4,6 +4,7 @@ param version string
 
 param adminUsername string = 'azureuser'
 param adminPublicKey string
+param enableEncryptionAtHost bool = false
 
 resource vm 'Microsoft.Compute/virtualMachines@2024-11-01' = {
   name: 'vm-${project_name}-${environment}-${version}'
@@ -58,7 +59,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-11-01' = {
     }
     securityProfile: {
       securityType: 'TrustedLaunch'
-      encryptionAtHost: true
+      encryptionAtHost: enableEncryptionAtHost
       uefiSettings: {
         secureBootEnabled: true
         vTpmEnabled: true
