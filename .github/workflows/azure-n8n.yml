@@ -59,7 +59,7 @@ jobs:
                   printf 'R_STORAGE_PASSWORD=%s\n' "$STORAGE_ACCOUNT_KEY"
                   echo "R_STORAGE_CONTAINER=share-azureinfra-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
                   echo "N8N_SUBDOMAIN=n8n"
-                  echo "DOMAIN=lilpinpong.canadacentral.cloudapp.azure.com"
+                  echo "DOMAIN=${{ env.PROJECT_NAME }}.canadacentral.cloudapp.azure.com"
                   printf 'ENCRYPTION_KEY=%s\n' "$N8N_ENCRYPTION_KEY"
                   echo "TZ=America/Toronto"
                   echo "DB_NAME=psql_${{ env.PROJECT_NAME }}"
