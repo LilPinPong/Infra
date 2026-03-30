@@ -153,8 +153,10 @@ jobs:
                 sudo ./bin/installdependencies.sh
               fi
 
+              sudo chown -R githubrunner:githubrunner /home/githubrunner/actions-runner
+
               if [ ! -f .runner ]; then
-                sudo -u githubrunner ./config.sh \
+                sudo -H -u githubrunner ./config.sh \
                   --unattended \
                   --url \"${GH_REPO_URL}\" \
                   --token \"${RUNNER_TOKEN}\" \
