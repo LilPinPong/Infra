@@ -168,8 +168,16 @@ jobs:
                 echo \"Runner already configured locally; skipping re-registration.\"
               fi
 
-              sudo ./svc.sh install githubrunner || true
-              sudo ./svc.sh restart || sudo ./svc.sh start
+              RUNNER_SERVICE=\"actions.runner.${GH_REPO_SLUG/\//-}.${RUNNER_VM_NAME}.service\"
+
+              if [ ! -f \"/etc/systemd/system/\${RUNNER_SERVICE}\" ]; then
+                sudo ./svc.sh install githubrunner
+              fi
+
+              sudo systemctl daemon-reload
+              sudo systemctl enable \"\${RUNNER_SERVICE}\"
+              sudo systemctl restart \"\${RUNNER_SERVICE}\" || sudo systemctl start \"\${RUNNER_SERVICE}\"
+              sudo systemctl is-active \"\${RUNNER_SERVICE}\"
             " \
             --query "value[0].message" \
             --output tsv
