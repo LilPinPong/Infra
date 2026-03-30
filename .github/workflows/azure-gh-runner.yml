@@ -2,19 +2,6 @@ name: Azure Self-Hosted Runner for Key Vault Private Link
 
 on:
   workflow_dispatch:
-    inputs:
-      runner_name:
-        description: "Runner short name (used in VM/NIC names)"
-        required: false
-        default: "ghkv"
-      runner_labels:
-        description: "Comma-separated GitHub runner labels"
-        required: false
-        default: "self-hosted,linux,azure,kv-private"
-      vm_size:
-        description: "Azure VM size"
-        required: false
-        default: "Standard_B2s"
 
 env:
   AZURE_CREDENTIALS: '{"clientId": "${{secrets.AZURE_CLIENT_ID}}", "clientSecret": "${{secrets.AZURE_CLIENT_SECRET}}", "subscriptionId": "${{secrets.AZURE_SUBSCRIPTION_ID}}", "tenantId": "${{secrets.AZURE_TENANT_ID}}"}'
@@ -44,76 +31,21 @@ jobs:
         run: |
           set -euo pipefail
 
-          RUNNER_SHORT="${{ github.event.inputs.runner_name }}"
-          RUNNER_SHORT="${RUNNER_SHORT:-ghkv}"
-          RUNNER_RG="rg-ghrunner-${AZURE_ENV}-${PROJECT_VERSION}"
-          RUNNER_VM_NAME="vm-${RUNNER_SHORT}-${AZURE_ENV}-${PROJECT_VERSION}"
-          RUNNER_NIC_NAME="nic-${RUNNER_SHORT}-${AZURE_ENV}-${PROJECT_VERSION}"
-          VNET_RG="rg-network-${AZURE_ENV}-${PROJECT_VERSION}"
-          SUBNET_NAME="snet-${PROJECT_NAME}-${AZURE_ENV}-${PROJECT_VERSION}"
+          az deployment group create --name rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --location ${{ env.LOCATION }} --template-file ./Azure/resources/rg.bicep --parameters environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
+          az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nsg.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }}
+          az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/pip.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+          az deployment group create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --template-file ./Azure/resources/nic.bicep --parameters project_name=${{ env.PROJECT_NAME }} environment=${{ env.AZURE_ENV }} version=${{ env.PROJECT_VERSION }} 
+          az vm create --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name vm-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --nics "nic-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}" --image "Ubuntu2204" --size "Standard_B2s" --admin-username "githubrunner" --authentication-type "ssh" --generate-ssh-keys --assign-identity --output none
 
-          VNET_NAME="$(az network vnet list \
-            --resource-group "${VNET_RG}" \
-            --query "[?contains(name, '-${AZURE_ENV}-${PROJECT_VERSION}')].name | [0]" \
-            --output tsv)"
-
-          if [ -z "${VNET_NAME}" ]; then
-            echo "::error::No VNet found in ${VNET_RG} for environment/version ${AZURE_ENV}/${PROJECT_VERSION}."
-            exit 1
-          fi
-
-          echo "Ensuring runner resource group: ${RUNNER_RG}"
-          az group create --name "${RUNNER_RG}" --location "${LOCATION}" --output none
-
-          SUBNET_ID="$(az network vnet subnet show \
-            --resource-group "${VNET_RG}" \
-            --vnet-name "${VNET_NAME}" \
-            --name "${SUBNET_NAME}" \
-            --query id \
-            --output tsv)"
-
-          if ! az network nic show --resource-group "${RUNNER_RG}" --name "${RUNNER_NIC_NAME}" >/dev/null 2>&1; then
-            echo "Creating NIC ${RUNNER_NIC_NAME} in subnet ${SUBNET_NAME}"
-            az network nic create \
-              --resource-group "${RUNNER_RG}" \
-              --name "${RUNNER_NIC_NAME}" \
-              --subnet "${SUBNET_ID}" \
-              --output none
-          else
-            echo "NIC ${RUNNER_NIC_NAME} already exists"
-          fi
-
-          if ! az vm show --resource-group "${RUNNER_RG}" --name "${RUNNER_VM_NAME}" >/dev/null 2>&1; then
-            echo "Creating VM ${RUNNER_VM_NAME}"
-            az vm create \
-              --resource-group "${RUNNER_RG}" \
-              --name "${RUNNER_VM_NAME}" \
-              --nics "${RUNNER_NIC_NAME}" \
-              --image "Ubuntu2204" \
-              --size "${{ github.event.inputs.vm_size }}" \
-              --admin-username "azureuser" \
-              --authentication-type "ssh" \
-              --generate-ssh-keys \
-              --assign-identity \
-              --output none
-          else
-            echo "VM ${RUNNER_VM_NAME} already exists"
-          fi
 
       - name: Assign KV permissions to runner managed identity
         shell: bash
         run: |
           set -euo pipefail
 
-          RUNNER_SHORT="${{ github.event.inputs.runner_name }}"
-          RUNNER_SHORT="${RUNNER_SHORT:-ghkv}"
-          RUNNER_RG="rg-ghrunner-${AZURE_ENV}-${PROJECT_VERSION}"
-          RUNNER_VM_NAME="vm-${RUNNER_SHORT}-${AZURE_ENV}-${PROJECT_VERSION}"
-          KV_RG="rg-common-${AZURE_ENV}-${PROJECT_VERSION}"
-          KV_NAME="kv-${PROJECT_NAME}-${AZURE_ENV}-${PROJECT_VERSION}"
 
-          KV_ID="$(az keyvault show --name "${KV_NAME}" --resource-group "${KV_RG}" --query id --output tsv)"
-          RUNNER_PRINCIPAL_ID="$(az vm identity show --resource-group "${RUNNER_RG}" --name "${RUNNER_VM_NAME}" --query principalId --output tsv)"
+          KV_ID="$(az keyvault show --name kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --resource-group rg-common-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --query id --output tsv)"
+          RUNNER_PRINCIPAL_ID="$(az vm identity show --resource-group rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --name vm-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }} --query principalId --output tsv)"
 
           echo "Runner principal: ${RUNNER_PRINCIPAL_ID}"
           echo "KV scope: ${KV_ID}"
@@ -142,23 +74,15 @@ jobs:
       - name: Register and start GitHub Actions runner service
         shell: bash
         env:
-          GH_RUNNER_PAT: ${{ secrets.GH_RUNNER_PAT }}
+          GH_RUNNER_PAT: "admin:org"
         run: |
           set -euo pipefail
 
-          if [ -z "${GH_RUNNER_PAT:-}" ]; then
-            echo "::error::Missing required GitHub secret GH_RUNNER_PAT (needs permission to manage self-hosted runners)."
-            exit 1
-          fi
-
-          RUNNER_SHORT="${{ github.event.inputs.runner_name }}"
-          RUNNER_SHORT="${RUNNER_SHORT:-ghkv}"
-          RUNNER_LABELS="${{ github.event.inputs.runner_labels }}"
           RUNNER_LABELS="${RUNNER_LABELS:-self-hosted,linux,azure,kv-private}"
           RUNNER_VERSION="2.327.1"
-          RUNNER_RG="rg-ghrunner-${AZURE_ENV}-${PROJECT_VERSION}"
-          RUNNER_VM_NAME="vm-${RUNNER_SHORT}-${AZURE_ENV}-${PROJECT_VERSION}"
-          GH_REPO_URL="https://github.com/${GITHUB_REPOSITORY}"
+          RUNNER_RG="rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+          RUNNER_VM_NAME="vm-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+          GH_REPO_URL="https://github.com/LilPinPong/Infra"
 
           if ! command -v jq >/dev/null 2>&1; then
             sudo apt-get update
@@ -169,7 +93,7 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${GH_RUNNER_PAT}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runners/registration-token" \
+            "https://api.github.com/repos/${GH_REPO_URL}/actions/runners/registration-token" \
             | jq -r '.token')"
 
           if [ -z "${RUNNER_TOKEN}" ] || [ "${RUNNER_TOKEN}" = "null" ]; then
@@ -191,9 +115,9 @@ jobs:
                 curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
               fi
 
-              sudo mkdir -p /home/azureuser/actions-runner
-              sudo chown -R azureuser:azureuser /home/azureuser/actions-runner
-              cd /home/azureuser/actions-runner
+              sudo mkdir -p /home/githubrunner/actions-runner
+              sudo chown -R githubrunner:githubrunner /home/githubrunner/actions-runner
+              cd /home/githubrunner/actions-runner
 
               if [ ! -f ./config.sh ]; then
                 ARCH=\$(uname -m)
@@ -212,7 +136,7 @@ jobs:
               fi
 
               if [ ! -f .runner ]; then
-                sudo -u azureuser ./config.sh \
+                sudo -u githubrunner ./config.sh \
                   --unattended \
                   --url \"${GH_REPO_URL}\" \
                   --token \"${RUNNER_TOKEN}\" \
@@ -224,7 +148,7 @@ jobs:
                 echo \"Runner already configured locally; skipping re-registration.\"
               fi
 
-              sudo ./svc.sh install azureuser || true
+              sudo ./svc.sh install githubrunner || true
               sudo ./svc.sh restart || sudo ./svc.sh start
             " \
             --query "value[0].message" \
@@ -235,11 +159,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          RUNNER_SHORT="${{ github.event.inputs.runner_name }}"
-          RUNNER_SHORT="${RUNNER_SHORT:-ghkv}"
-          RUNNER_RG="rg-ghrunner-${AZURE_ENV}-${PROJECT_VERSION}"
-          RUNNER_VM_NAME="vm-${RUNNER_SHORT}-${AZURE_ENV}-${PROJECT_VERSION}"
-          KV_NAME="kv-${PROJECT_NAME}-${AZURE_ENV}-${PROJECT_VERSION}"
+          RUNNER_RG="rg-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+          RUNNER_VM_NAME="vm-runner-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+          KV_NAME="kv-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
 
           az vm run-command invoke \
             --command-id RunShellScript \
