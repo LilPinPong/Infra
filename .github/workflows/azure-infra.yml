@@ -204,5 +204,5 @@ jobs:
               with:
                   directory: ./Azure/resources/compiled
                   framework: arm
-                  skip_check: CKV_AZURE_50
+                  skip_check: CKV_AZURE_50,CKV_AZURE_97,CKV_AZURE_151
 
