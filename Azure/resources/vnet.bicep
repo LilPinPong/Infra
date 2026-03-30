@@ -10,6 +10,7 @@ param vnet_address_range string = '172.18.0.0'
 param vnet_address_range_suffix int = 16
 var snet_psql string = 'snet-psql-${environment}-${version}'
 var snet_name string = 'snet-${project_name}-${environment}-${version}'
+var snet_runner string = 'snet-runner-${environment}-${version}'
 
 var vnet_name = 'vnet-${resourceGroup().location}-${environment}-${version}'
 var vnet_address_space = '${vnet_address_range}/${vnet_address_range_suffix}'
@@ -27,6 +28,7 @@ var subnets = [
   {subnetName: 'DatabricksPublic' , addressPrefix: '${vnet_address_range_base}.1.192/26'}
   {subnetName: snet_name , addressPrefix: '${vnet_address_range_base}.2.0/26'}
   {subnetName: snet_psql , addressPrefix: '${vnet_address_range_base}.2.64/26'}
+  {subnetName: snet_runner , addressPrefix: '${vnet_address_range_base}.2.128/26'}
 ]
 
 resource vnet 'Microsoft.Network/virtualNetworks@2023-11-01' = {

@@ -8,11 +8,15 @@ on:
             - Azure/**
             - .github/workflows/azure-infra.yml
             - .github/workflows/azure-project.yml
+            - .github/workflows/azure-n8n.yml
+            - .github/workflows/azure-gh-runner.yml
     pull_request:
         paths:
             - Azure/**
             - .github/workflows/azure-infra.yml
             - .github/workflows/azure-project.yml
+            - .github/workflows/azure-n8n.yml
+            - .github/workflows/azure-gh-runner.yml
     workflow_dispatch:
 
 env:
