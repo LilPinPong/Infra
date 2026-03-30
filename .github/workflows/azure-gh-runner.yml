@@ -116,7 +116,7 @@ jobs:
             --name "${RUNNER_VM_NAME}" \
             --resource-group "${RUNNER_RG}" \
             --scripts "
-              set -euo pipefail
+              set -eu
 
               sudo apt-get update
               sudo apt-get install -y curl jq ca-certificates tar gzip
@@ -178,7 +178,7 @@ jobs:
             --name "${RUNNER_VM_NAME}" \
             --resource-group "${RUNNER_RG}" \
             --scripts "
-              set -euo pipefail
+              set -eu
 
               echo \"Checking DNS resolution for Key Vault through private endpoint\"
               getent hosts ${KV_NAME}.vault.azure.net || true
