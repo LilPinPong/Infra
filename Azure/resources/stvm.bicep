@@ -6,6 +6,7 @@ param assignBlobRole bool = false
 var vnet_rg string = 'rg-network-${environment}-${version}'
 var vnet_name string = 'vnet-${resourceGroup().location}-${environment}-${version}'
 var snet_name string = 'snet-${project_name}-${environment}-${version}'
+var privateDnsResourceGroupName = 'rg-privatedns-${environment}-${version}'
 
 
 resource stvm 'Microsoft.Storage/storageAccounts@2025-06-01' = {
@@ -66,6 +67,26 @@ resource pep 'Microsoft.Network/privateEndpoints@2025-05-01' = {
           groupIds: [
             'blob'
           ]
+        }
+      }
+    ]
+  }
+}
+
+resource blobPrivateDnsZone 'Microsoft.Network/privateDnsZones@2024-06-01' existing = {
+  name: 'privatelink.blob.${az.environment().suffixes.storage}'
+  scope: resourceGroup(privateDnsResourceGroupName)
+}
+
+resource blobPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2025-05-01' = {
+  name: 'default'
+  parent: pep
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'blob'
+        properties: {
+          privateDnsZoneId: blobPrivateDnsZone.id
         }
       }
     ]

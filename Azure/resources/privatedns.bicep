@@ -6,6 +6,7 @@ var vnetName string = 'vnet-${resourceGroup().location}-${environment}-${version
 var soaEmail string = 'LangisGabyhotmail.onmicrosoft.com'
 
 var zone_links = [
+  'privatelink.blob.${az.environment().suffixes.storage}'
   'privatelink.file.${az.environment().suffixes.storage}'
   'privatelink.queue.${az.environment().suffixes.storage}'
   'privatelink.table.${az.environment().suffixes.storage}'
