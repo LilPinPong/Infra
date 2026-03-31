@@ -54,10 +54,10 @@ jobs:
                 {
                   echo "AZURE_STORAGE_ACCOUNT=stvm${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }}"
                   printf 'AZURE_STORAGE_ACCESS_KEY=%s\n' "$STORAGE_ACCOUNT_KEY"
-                  echo "AZURE_BLOB_CONTAINER=share-azureinfra-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                  echo "AZURE_BLOB_CONTAINER=share-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
                   echo "R_STORAGE_ACCOUNT_NAME=stvm${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }}"
                   printf 'R_STORAGE_PASSWORD=%s\n' "$STORAGE_ACCOUNT_KEY"
-                  echo "R_STORAGE_CONTAINER=share-azureinfra-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                  echo "R_STORAGE_CONTAINER=share-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
                   echo "N8N_SUBDOMAIN=n8n"
                   echo "DOMAIN=${{ env.PROJECT_NAME }}.canadacentral.cloudapp.azure.com"
                   printf 'ENCRYPTION_KEY=%s\n' "$N8N_ENCRYPTION_KEY"
@@ -78,6 +78,19 @@ jobs:
                 fi
                 if [ ! -s "$RUNNER_TEMP/n8n.env" ]; then
                   echo "::error::Generated .env is empty"
+                  exit 1
+                fi
+
+                EXPECTED_CONTAINER="share-${{ env.PROJECT_NAME }}-${{ env.AZURE_ENV }}-${{ env.PROJECT_VERSION }}"
+                CONTAINER_EXISTS="$(az storage container exists \
+                  --account-name "stvm${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }}" \
+                  --account-key "$STORAGE_ACCOUNT_KEY" \
+                  --name "$EXPECTED_CONTAINER" \
+                  --query "exists" \
+                  -o tsv)"
+
+                if [ "$CONTAINER_EXISTS" != "true" ]; then
+                  echo "::error::Storage container '$EXPECTED_CONTAINER' does not exist in account stvm${{ env.PROJECT_NAME }}${{ env.AZURE_ENV }}${{ env.PROJECT_VERSION }}."
                   exit 1
                 fi
 
