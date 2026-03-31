@@ -139,6 +139,9 @@ mount_azure_files_share() {
   local mount_point
   local tmp_path
   local mount_backup_path
+  local blob_endpoint
+  local attempt
+  local max_attempts
 
   storage_account="${AZURE_STORAGE_ACCOUNT:-${AZURE_STORAGE_ACCOUNT_NAME:-${STORAGE_ACCOUNT_NAME:-${R_STORAGE_ACCOUNT_NAME:-}}}}"
   storage_key="${AZURE_STORAGE_ACCESS_KEY:-${AZURE_STORAGE_KEY:-${AZURE_STORAGE_ACCOUNT_KEY:-${AZURE_STORAGE_ACCOUNT_PASSWORD:-${STORAGE_ACCOUNT_PASSWORD:-${R_STORAGE_ACCOUNT_PASSWORD:-${R_STORAGE_PASSWORD:-}}}}}}}"
@@ -146,6 +149,8 @@ mount_azure_files_share() {
   mount_point="${AZURE_MOUNT_POINT:-/media/${container_name}}"
   tmp_path="${AZURE_BLOBFUSE_TMP_PATH:-/mnt/blobfuse2tmp/${container_name}}"
   mount_backup_path="/tmp/blobfuse2-local-backup-${container_name}-$(date +%s)"
+  blob_endpoint="${storage_account}.blob.core.windows.net"
+  max_attempts=10
 
   if [ -z "$storage_account" ] || [ -z "$storage_key" ] || [ -z "$container_name" ]; then
     log "ERROR" "🛑 Missing blob settings. Provide account, key and container (AZURE_* or R_* variables)."
@@ -169,13 +174,33 @@ mount_azure_files_share() {
       log "INFO" "📦 Local files moved to $mount_backup_path before blob mount"
     fi
 
-    run_step "☁️ Mount Blob container with blobfuse2" \
-      sudo env \
-      AZURE_STORAGE_ACCOUNT="$storage_account" \
-      AZURE_STORAGE_AUTH_TYPE="Key" \
-      AZURE_STORAGE_ACCESS_KEY="$storage_key" \
-      AZURE_STORAGE_ACCOUNT_CONTAINER="$container_name" \
-      blobfuse2 mount "$mount_point" --tmp-path="$tmp_path"
+    log "INFO" "🔎 Blob endpoint DNS check: ${blob_endpoint}"
+    getent hosts "$blob_endpoint" >>"$LOG_FILE" 2>&1 || true
+
+    for attempt in $(seq 1 "$max_attempts"); do
+      log "INFO" "☁️ Mount Blob container with blobfuse2 (attempt ${attempt}/${max_attempts})"
+
+      if sudo env \
+        AZURE_STORAGE_ACCOUNT="$storage_account" \
+        AZURE_STORAGE_AUTH_TYPE="Key" \
+        AZURE_STORAGE_ACCESS_KEY="$storage_key" \
+        AZURE_STORAGE_CONTAINER="$container_name" \
+        AZURE_STORAGE_ACCOUNT_CONTAINER="$container_name" \
+        blobfuse2 mount "$mount_point" --tmp-path="$tmp_path" >>"$LOG_FILE" 2>&1; then
+        log "INFO" "✅ Blob mount command succeeded"
+        break
+      fi
+
+      log "WARN" "⚠️ blobfuse2 mount failed on attempt ${attempt}/${max_attempts}"
+      if [ "$attempt" -lt "$max_attempts" ]; then
+        sleep 15
+      fi
+    done
+
+    if ! mountpoint -q "$mount_point"; then
+      log "ERROR" "🛑 Failed to mount blob container after ${max_attempts} attempts."
+      return 1
+    fi
   fi
 
   sleep 2
